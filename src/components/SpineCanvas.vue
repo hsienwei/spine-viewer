@@ -76,7 +76,6 @@ const loadSpine = async () => {
       spine = module
     }
 
-    // Preload textures first
     await preloadTextures()
 
     const canvas = canvasRef.value
@@ -122,9 +121,7 @@ const initializeSpine = (sc: any) => {
       return
     }
 
-    // Create atlas with preloaded images
     const atlas = new spine.TextureAtlas(atlasText, (pageName: string) => {
-      // Look for preloaded image by name
       const img = preloadedImages.get(pageName) 
         || preloadedImages.get(pageName + '.png')
         || preloadedImages.get(pageName + '.jpg')
@@ -182,6 +179,20 @@ const renderSpine = (sc: any) => {
   const track = animationState.getCurrent(0)
   if (track) {
     emit('timeUpdate', track.trackTime, track.animation.duration)
+  }
+
+  // Center camera on skeleton
+  if (sc.renderer.camera) {
+    sc.renderer.camera.position.set(0, 0, 500)
+    sc.renderer.camera.apply()
+    
+    const bounds = skeleton.getBounds()
+    if (bounds) {
+      const cx = bounds.offset.x + bounds.size.x / 2
+      const cy = bounds.offset.y + bounds.size.y / 2
+      sc.renderer.camera.position.set(-cx, -cy, 500)
+      sc.renderer.camera.apply()
+    }
   }
 
   sc.renderer.begin()
