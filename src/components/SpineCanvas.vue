@@ -13,7 +13,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 
-// Use dynamic import for spine-webgl
 let spine: any = null
 
 const props = defineProps<{
@@ -40,6 +39,30 @@ const errorMsg = ref('')
 let spineCanvas: any = null
 let skeleton: any = null
 let animationState: any = null
+let preloadedImages: Map<string, HTMLImageElement> = new Map()
+
+const preloadTextures = async (): Promise<void> => {
+  if (!props.textures || props.textures.length === 0) return
+  
+  const promises = props.textures.map((texUrl: string) => {
+    return new Promise<void>((resolve) => {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        const filename = texUrl.split('/').pop() || texUrl
+        preloadedImages.set(filename, img)
+        resolve()
+      }
+      img.onerror = () => {
+        console.error(`Failed to preload: ${texUrl}`)
+        resolve()
+      }
+      img.src = texUrl
+    })
+  })
+  
+  await Promise.all(promises)
+}
 
 const loadSpine = async () => {
   if (!props.skeletonUrl || !props.atlasUrl || !canvasRef.value) return
@@ -48,11 +71,13 @@ const loadSpine = async () => {
   errorMsg.value = ''
 
   try {
-    // Dynamic import
     if (!spine) {
       const module = await import('@esotericsoftware/spine-webgl')
       spine = module
     }
+
+    // Preload textures first
+    await preloadTextures()
 
     const canvas = canvasRef.value
     canvas.width = canvas.clientWidth * window.devicePixelRatio
@@ -62,7 +87,6 @@ const loadSpine = async () => {
       loadAssets: (sc: any) => {
         sc.assetManager.loadText(props.skeletonUrl!)
         sc.assetManager.loadText(props.atlasUrl!)
-        props.textures?.forEach((tex, i) => sc.assetManager.loadTexture(`tex_${i}`, tex))
       },
       initialize: (sc: any) => {
         initializeSpine(sc)
@@ -98,15 +122,20 @@ const initializeSpine = (sc: any) => {
       return
     }
 
-    const atlas = new spine.TextureAtlas(atlasText, (name: string) => {
-      const idx = name.startsWith('tex_') ? parseInt(name.split('_')[1], 10) : 0
-      const texUrl = props.textures?.[idx]
-      if (!texUrl) return null
+    // Create atlas with preloaded images
+    const atlas = new spine.TextureAtlas(atlasText, (pageName: string) => {
+      // Look for preloaded image by name
+      const img = preloadedImages.get(pageName) 
+        || preloadedImages.get(pageName + '.png')
+        || preloadedImages.get(pageName + '.jpg')
+        || Array.from(preloadedImages.values())[0]
       
-      const img = new Image()
-      img.src = texUrl
-      const tex = new spine.Texture(img)
-      return tex
+      if (img) {
+        return new spine.Texture(img)
+      }
+      
+      console.warn(`No preloaded image for page: ${pageName}`)
+      return null
     })
 
     const atlasLoader = new spine.AtlasAttachmentLoader(atlas)
@@ -114,7 +143,8 @@ const initializeSpine = (sc: any) => {
     const skeletonData = skeletonJson.readSkeletonData(skeletonText)
 
     skeleton = new spine.Skeleton(skeletonData)
-    animationState = new spine.AnimationState(skeletonData.animations)
+    const animationStateData = new spine.AnimationStateData(skeletonData)
+    animationState = new spine.AnimationState(animationStateData)
 
     const animations = skeletonData.animations.map((a: any) => a.name)
     const firstAnim = props.animationName || animations[0]
