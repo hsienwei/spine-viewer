@@ -181,32 +181,37 @@ const renderSpine = (sc: any) => {
     emit('timeUpdate', track.trackTime, track.animation.duration)
   }
 
-  // Get skeleton bounds to center camera
-  let centerX = 0, centerY = 0, zoom = 1
+  // Get skeleton bounds
+  let centerX = 0, centerY = 0
   try {
     const bounds = skeleton.getBoundsRect()
     if (bounds) {
       centerX = bounds.x + bounds.width / 2
       centerY = bounds.y + bounds.height / 2
-      
-      // Calculate zoom to fit skeleton in view
-      const scaleX = sc.htmlCanvas.width / bounds.width
-      const scaleY = sc.htmlCanvas.height / bounds.height
-      zoom = Math.min(scaleX, scaleY) * 0.8
+      console.log('=== Debug Info ===')
+      console.log('Bounds:', bounds)
+      console.log('Center:', centerX, centerY)
+      console.log('Canvas:', sc.htmlCanvas.width, 'x', sc.htmlCanvas.height)
     }
   } catch (e) {
-    // ignore
+    console.log('Bounds error:', e)
   }
 
-  // Adjust camera - key fixes from official examples
+  // Simplified camera - fixed zoom = 1
   sc.renderer.camera.position.x = -centerX
-  sc.renderer.camera.position.y = -centerY
+  sc.renderer.camera.position.y = -centerY  
   sc.renderer.camera.position.z = 500
-  sc.renderer.camera.zoom = zoom
-  // Must call update() after changing camera properties!
+  sc.renderer.camera.zoom = 1
+
+  console.log('Camera:', {
+    x: sc.renderer.camera.position.x,
+    y: sc.renderer.camera.position.y,
+    z: sc.renderer.camera.position.z,
+    zoom: sc.renderer.camera.zoom
+  })
+
   sc.renderer.camera.update()
 
-  // Clear canvas - also key from official examples
   sc.clear(0.2, 0.2, 0.2, 1)
 
   sc.renderer.begin()
