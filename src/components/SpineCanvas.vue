@@ -177,7 +177,7 @@ const renderSpine = (sc: any) => {
   
   animationState.update(delta * timeScale)
   skeleton.update(delta)
-  skeleton.updateWorldTransform(spine.Physics ? spine.Physics.None : 0)
+  skeleton.updateWorldTransform(0)
 
   const track = animationState.getCurrent(0)
   if (track) {
