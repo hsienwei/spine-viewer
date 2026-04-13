@@ -183,13 +183,14 @@ const renderSpine = (sc: any) => {
 
   // Center camera on skeleton
   if (sc.renderer.camera) {
-    sc.renderer.camera.position.set(0, 0, 500)
-    
     const bounds = skeleton.getBounds()
-    if (bounds) {
+    if (bounds && bounds.offset && bounds.size) {
       const cx = bounds.offset.x + bounds.size.x / 2
       const cy = bounds.offset.y + bounds.size.y / 2
       sc.renderer.camera.position.set(-cx, -cy, 500)
+    } else {
+      // Default camera position
+      sc.renderer.camera.position.set(0, 0, 500)
     }
   }
 
