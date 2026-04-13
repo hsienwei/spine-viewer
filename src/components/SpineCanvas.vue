@@ -197,10 +197,20 @@ const renderSpine = (sc: any) => {
     console.log('Bounds error:', e)
   }
 
-  // Simplified camera - fixed zoom = 1
+  // Check slots and attachments
+  console.log('=== Slots Debug ===')
+  for (let i = 0; i < skeleton.slots.length; i++) {
+    const slot = skeleton.slots[i]
+    console.log(`Slot ${i}: ${slot.name}`, {
+      attachment: slot.attachment?.name,
+      type: slot.attachment?.type
+    })
+  }
+
+  // Simplified camera - try smaller Z distance
   sc.renderer.camera.position.x = -centerX
   sc.renderer.camera.position.y = -centerY  
-  sc.renderer.camera.position.z = 500
+  sc.renderer.camera.position.z = 150  // Much closer!
   sc.renderer.camera.zoom = 1
 
   console.log('Camera:', {
