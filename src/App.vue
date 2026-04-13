@@ -5,6 +5,13 @@
         @file-selected="handleFileSelected"
         @animation-change="handleAnimationChange"
         @playback-change="handlePlaybackChange"
+        :animations="animations"
+        :current-animation="animationName"
+        :current-time="currentTime"
+        :duration="duration"
+        :draw-call="drawCall"
+        :is-playing="isPlaying"
+        :playback-rate="playbackRate"
       />
     </aside>
     <main class="main-content">
@@ -16,6 +23,8 @@
         :animation-name="animationName"
         :is-playing="isPlaying"
         :playback-rate="playbackRate"
+        :show-bones="showBones"
+        :show-slots="showSlots"
         @loaded="handleLoaded"
         @error="handleError"
       />
@@ -34,7 +43,14 @@ const textures = ref<string[]>([])
 const animationName = ref('')
 const isPlaying = ref(true)
 const playbackRate = ref(1)
+const showBones = ref(false)
+const showSlots = ref(false)
 const spineCanvasRef = ref<InstanceType<typeof SpineCanvas> | null>(null)
+
+const animations = ref<string[]>([])
+const currentTime = ref(0)
+const duration = ref(0)
+const drawCall = ref(0)
 
 const handleFileSelected = (files: { skeleton: string; atlas: string; textures: string[] }) => {
   skeletonUrl.value = files.skeleton
@@ -50,10 +66,13 @@ const handlePlaybackChange = (playing: boolean) => {
   isPlaying.value = playing
 }
 
-const handleLoaded = (data: { animations: string[]; skeletonName: string }) => {
+const handleLoaded = (data: { animations: string[]; skeletonName: string; drawCall: number }) => {
+  animations.value = data.animations
   if (data.animations.length > 0) {
     animationName.value = data.animations[0]
+    duration.value = 2.5
   }
+  drawCall.value = data.drawCall
 }
 
 const handleError = (error: string) => {

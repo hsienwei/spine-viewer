@@ -48,9 +48,9 @@
     </section>
 
     <!-- Animation List -->
-    <section v-if="animations.length > 0" class="section">
+    <section v-if="animations && animations.length > 0" class="section">
       <h3 class="section-title">Animation</h3>
-      <select v-model="selectedAnimation" class="select-input">
+      <select v-model="localAnimation" class="select-input" @change="emitAnimationChange">
         <option v-for="anim in animations" :key="anim" :value="anim">
           {{ anim }}
         </option>
@@ -58,7 +58,7 @@
     </section>
 
     <!-- Playback Controls -->
-    <section v-if="animations.length > 0" class="section">
+    <section v-if="animations && animations.length > 0" class="section">
       <h3 class="section-title">Playback</h3>
       
       <div class="playback-controls">
@@ -75,13 +75,13 @@
         <input 
           type="range" 
           :min="0" 
-          :max="duration" 
-          :value="currentTime"
+          :max="duration || 10" 
+          :value="currentTime || 0"
           class="slider"
           @input="seekTo($event)"
         />
         <div class="time-display">
-          {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
+          {{ formatTime(currentTime || 0) }} / {{ formatTime(duration || 0) }}
         </div>
       </div>
 
@@ -93,35 +93,35 @@
           min="0.1" 
           max="3" 
           step="0.1"
-          :value="playbackRate"
+          :value="playbackRate || 1"
           class="slider"
           @input="setSpeed($event)"
         />
-        <span>{{ playbackRate.toFixed(1) }}x</span>
+        <span>{{ (playbackRate || 1).toFixed(1) }}x</span>
       </div>
     </section>
 
     <!-- Info Panel -->
-    <section v-if="animations.length > 0" class="section">
+    <section v-if="animations && animations.length > 0" class="section">
       <h3 class="section-title">Info</h3>
       <div class="info-grid">
         <div class="info-item">
           <span class="info-label">Animation:</span>
-          <span class="info-value">{{ selectedAnimation || '-' }}</span>
+          <span class="info-value">{{ currentAnimation || '-' }}</span>
         </div>
         <div class="info-item">
           <span class="info-label">Time:</span>
-          <span class="info-value">{{ formatTime(currentTime) }}</span>
+          <span class="info-value">{{ formatTime(currentTime || 0) }}</span>
         </div>
         <div class="info-item">
           <span class="info-label">DrawCall:</span>
-          <span class="info-value">{{ drawCall }}</span>
+          <span class="info-value">{{ drawCall || 0 }}</span>
         </div>
       </div>
     </section>
 
     <!-- Slot/Bone Controls -->
-    <section v-if="animations.length > 0" class="section">
+    <section v-if="animations && animations.length > 0" class="section">
       <h3 class="section-title">Slots & Bones</h3>
       <div class="toggle-group">
         <label class="toggle-label">
@@ -155,25 +155,36 @@ interface FileData {
   type: 'skeleton' | 'atlas' | 'texture'
 }
 
+const props = defineProps<{
+  animations?: string[]
+  currentAnimation?: string
+  currentTime?: number
+  duration?: number
+  drawCall?: number
+  isPlaying?: boolean
+  playbackRate?: number
+}>()
+
 const emit = defineEmits<{
   'file-selected': [files: { skeleton: string; atlas: string; textures: string[] }]
   'animation-change': [name: string]
   'playback-change': [playing: boolean]
+  'time-update': [time: number]
+  'seek': [time: number]
+  'speed-change': [speed: number]
 }>()
 
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const isDragging = ref(false)
 const selectedFiles = ref<FileData[]>([])
-const animations = ref<string[]>([])
-const selectedAnimation = ref('')
-const isPlaying = ref(true)
-const currentTime = ref(0)
-const duration = ref(0)
-const playbackRate = ref(1)
-const drawCall = ref(0)
+const localAnimation = ref('')
 const showSlots = ref(false)
 const showBones = ref(false)
 const spineVersion = ref('4')
+
+watch(() => props.currentAnimation, (val) => {
+  if (val) localAnimation.value = val
+})
 
 const canLoad = computed(() => {
   const hasSkeleton = selectedFiles.value.some(f => f.type === 'skeleton')
@@ -238,35 +249,32 @@ const loadFiles = () => {
       atlas: atlas.url,
       textures
     })
-    
-    // Simulate loaded animations (will be replaced with actual Spine data)
-    setTimeout(() => {
-      animations.value = ['walk', 'run', 'idle', 'attack']
-      selectedAnimation.value = animations.value[0]
-      duration.value = 2.5
-    }, 500)
   }
 }
 
 const togglePlay = () => {
-  isPlaying.value = !isPlaying.value
-  emit('playback-change', isPlaying.value)
+  emit('playback-change', !props.isPlaying)
 }
 
 const stop = () => {
-  isPlaying.value = false
-  currentTime.value = 0
   emit('playback-change', false)
+  emit('seek', 0)
 }
 
 const seekTo = (event: Event) => {
   const target = event.target as HTMLInputElement
-  currentTime.value = parseFloat(target.value)
+  emit('seek', parseFloat(target.value))
 }
 
 const setSpeed = (event: Event) => {
   const target = event.target as HTMLInputElement
-  playbackRate.value = parseFloat(target.value)
+  emit('speed-change', parseFloat(target.value))
+}
+
+const emitAnimationChange = () => {
+  if (localAnimation.value) {
+    emit('animation-change', localAnimation.value)
+  }
 }
 
 const formatTime = (seconds: number): string => {
@@ -275,12 +283,6 @@ const formatTime = (seconds: number): string => {
   const ms = Math.floor((seconds % 1) * 100)
   return `${mins}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`
 }
-
-watch(selectedAnimation, (newVal) => {
-  if (newVal) {
-    emit('animation-change', newVal)
-  }
-})
 </script>
 
 <style scoped>
