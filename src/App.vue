@@ -25,8 +25,8 @@
         :playback-rate="playbackRate"
         :show-bones="showBones"
         :show-slots="showSlots"
-        @loaded="handleLoaded"
-        @error="handleError"
+        @loaded="(data) => handleLoaded(data)"
+        @error="(err) => handleError(err)"
       />
     </main>
   </div>
@@ -66,11 +66,11 @@ const handlePlaybackChange = (playing: boolean) => {
   isPlaying.value = playing
 }
 
-const handleLoaded = (data: { animations: string[]; skeletonName: string; drawCall: number }) => {
+const handleLoaded = (data: { animations: string[]; skeletonName: string; drawCall: number; duration: number }) => {
   animations.value = data.animations
   if (data.animations.length > 0) {
     animationName.value = data.animations[0]
-    duration.value = 2.5
+    duration.value = data.duration || 2.5
   }
   drawCall.value = data.drawCall
 }

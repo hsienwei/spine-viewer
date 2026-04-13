@@ -13,6 +13,9 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 
+// Use dynamic import for spine-webgl
+let spine: any = null
+
 const props = defineProps<{
   skeletonUrl?: string
   atlasUrl?: string
@@ -25,81 +28,57 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  loaded: [data: { animations: string[]; skeletonName: string; drawCall: number }]
-  error: [error: string]
+  (e: 'loaded', data: { animations: string[]; skeletonName: string; drawCall: number; duration: number }): void
+  (e: 'error', error: string): void
+  (e: 'timeUpdate', currentTime: number, duration: number): void
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const loading = ref(false)
 const errorMsg = ref('')
 
-let gl: WebGLRenderingContext | null = null
-let animationId: number | null = null
-
-const initWebGL = (): WebGLRenderingContext | null => {
-  if (!canvasRef.value) return null
-  
-  const canvas = canvasRef.value
-  const ctx = canvas.getContext('webgl') 
-  if (!ctx) {
-    errorMsg.value = 'WebGL not supported'
-    return null
-  }
-  
-  gl = ctx as WebGLRenderingContext
-  canvas.width = canvas.clientWidth * window.devicePixelRatio
-  canvas.height = canvas.clientHeight * window.devicePixelRatio
-  gl.viewport(0, 0, canvas.width, canvas.height)
-  
-  return gl
-}
-
-onMounted(() => {
-  if (props.skeletonUrl && props.atlasUrl) {
-    loadSpine()
-  }
-})
-
-onUnmounted(() => {
-  if (animationId) {
-    cancelAnimationFrame(animationId)
-  }
-})
-
-watch(() => props.skeletonUrl, () => {
-  if (props.skeletonUrl && props.atlasUrl) {
-    loadSpine()
-  }
-})
+let spineCanvas: any = null
+let skeleton: any = null
+let animationState: any = null
 
 const loadSpine = async () => {
-  if (!props.skeletonUrl || !props.atlasUrl) return
+  if (!props.skeletonUrl || !props.atlasUrl || !canvasRef.value) return
   
   loading.value = true
   errorMsg.value = ''
-  
+
   try {
-    // Load skeleton JSON
-    const skeletonResponse = await fetch(props.skeletonUrl)
-    const skeletonText = await skeletonResponse.text()
-    
-    // Load atlas (for now just get text)
-    await fetch(props.atlasUrl)
-    
-    // For now, just emit loaded with placeholder data
-    // Real spine-webgl integration requires more complex setup
-    // The library uses a different pattern with SpineCanvasApp
-    
-    const animations = extractAnimations(skeletonText)
-    
-    emit('loaded', {
-      animations,
-      skeletonName: 'spine-skeleton',
-      drawCall: 0
-    })
-    
-    // Start render loop (placeholder - just clears canvas)
-    startRenderLoop()
+    // Dynamic import
+    if (!spine) {
+      const module = await import('@esotericsoftware/spine-webgl')
+      spine = module
+    }
+
+    const canvas = canvasRef.value
+    canvas.width = canvas.clientWidth * window.devicePixelRatio
+    canvas.height = canvas.clientHeight * window.devicePixelRatio
+
+    const app = {
+      loadAssets: (sc: any) => {
+        sc.assetManager.loadText(props.skeletonUrl!)
+        sc.assetManager.loadText(props.atlasUrl!)
+        props.textures?.forEach((tex, i) => sc.assetManager.loadTexture(`tex_${i}`, tex))
+      },
+      initialize: (sc: any) => {
+        initializeSpine(sc)
+      },
+      render: (sc: any) => {
+        renderSpine(sc)
+      }
+    }
+
+    const config = {
+      app,
+      pathPrefix: '',
+      webglConfig: { alpha: true }
+    }
+
+    spineCanvas = new spine.SpineCanvas(canvas, config)
     
   } catch (e) {
     errorMsg.value = e instanceof Error ? e.message : 'Failed to load'
@@ -109,36 +88,107 @@ const loadSpine = async () => {
   loading.value = false
 }
 
-const extractAnimations = (skeletonText: string): string[] => {
+const initializeSpine = (sc: any) => {
   try {
-    const data = JSON.parse(skeletonText)
-    if (data.animations) {
-      return Object.keys(data.animations)
+    const atlasText = sc.assetManager.get(props.atlasUrl!)
+    const skeletonText = sc.assetManager.get(props.skeletonUrl!)
+    
+    if (!atlasText || !skeletonText) {
+      errorMsg.value = 'Failed to load assets'
+      return
     }
-  } catch {
-    // Ignore parse errors
+
+    const atlas = new spine.TextureAtlas(atlasText, (name: string) => {
+      const idx = name.startsWith('tex_') ? parseInt(name.split('_')[1], 10) : 0
+      const texUrl = props.textures?.[idx]
+      if (!texUrl) return null
+      
+      const img = new Image()
+      img.src = texUrl
+      const tex = new spine.Texture(img)
+      return tex
+    })
+
+    const atlasLoader = new spine.AtlasAttachmentLoader(atlas)
+    const skeletonJson = new spine.SkeletonJson(atlasLoader)
+    const skeletonData = skeletonJson.readSkeletonData(skeletonText)
+
+    skeleton = new spine.Skeleton(skeletonData)
+    animationState = new spine.AnimationState(skeletonData.animations)
+
+    const animations = skeletonData.animations.map((a: any) => a.name)
+    const firstAnim = props.animationName || animations[0]
+    
+    if (firstAnim && animationState) {
+      animationState.setAnimation(0, firstAnim, true)
+    }
+
+    const animData = skeletonData.animations.find((a: any) => a.name === firstAnim)
+    const duration = animData?.duration || 0
+
+    emit('loaded', {
+      animations,
+      skeletonName: skeletonData.name || 'spine',
+      drawCall: 0,
+      duration
+    })
+
+  } catch (e) {
+    errorMsg.value = e instanceof Error ? e.message : 'Failed to initialize'
+    emit('error', errorMsg.value)
   }
-  return []
 }
 
-const startRenderLoop = () => {
-  if (!canvasRef.value) return
+const renderSpine = (sc: any) => {
+  if (!skeleton || !animationState || !sc.renderer) return
+
+  const delta = sc.time.delta
+  const timeScale = props.isPlaying !== false ? (props.playbackRate || 1) : 0
   
-  const render = () => {
-    if (!gl) {
-      gl = initWebGL()
-    }
-    
-    if (gl && canvasRef.value) {
-      // Clear with dark background
-      gl.clearColor(0.1, 0.1, 0.1, 1.0)
-      gl.clear(gl.COLOR_BUFFER_BIT)
-    }
-    
-    animationId = requestAnimationFrame(render)
+  animationState.update(delta * timeScale)
+  skeleton.update(delta)
+  skeleton.updateWorldTransform()
+
+  const track = animationState.getCurrent(0)
+  if (track) {
+    emit('timeUpdate', track.trackTime, track.animation.duration)
   }
-  
-  render()
+
+  sc.renderer.begin()
+  sc.renderer.drawSkeleton(skeleton, true)
+  sc.renderer.end()
+}
+
+watch(() => props.skeletonUrl, (val) => {
+  if (val && props.atlasUrl) loadSpine()
+})
+
+watch(() => props.animationName, (animName) => {
+  if (animName && animationState) {
+    animationState.setAnimation(0, animName, true)
+  }
+})
+
+onMounted(() => {
+  if (props.skeletonUrl && props.atlasUrl) {
+    loadSpine()
+  }
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  if (spineCanvas) {
+    spineCanvas.dispose()
+  }
+  window.removeEventListener('resize', handleResize)
+})
+
+const handleResize = () => {
+  if (canvasRef.value && spineCanvas) {
+    const canvas = canvasRef.value
+    canvas.width = canvas.clientWidth * window.devicePixelRatio
+    canvas.height = canvas.clientHeight * window.devicePixelRatio
+  }
 }
 </script>
 
@@ -168,15 +218,16 @@ const startRenderLoop = () => {
   padding: 16px 24px;
   border-radius: 8px;
   font-size: 14px;
+  z-index: 10;
 }
 
 .loading-overlay {
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.8);
   color: #fff;
 }
 
 .error-overlay {
-  background: rgba(255, 0, 0, 0.7);
-  color: #ff6b6b;
+  background: rgba(255, 50, 50, 0.8);
+  color: #ffaaaa;
 }
 </style>
