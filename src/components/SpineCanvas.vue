@@ -181,8 +181,20 @@ const renderSpine = (sc: any) => {
     emit('timeUpdate', track.trackTime, track.animation.duration)
   }
 
-  // Set camera position
-  sc.renderer.camera.position.set(0, 0, 500)
+  // Get skeleton bounds to center camera
+  let centerX = 0, centerY = 0
+  try {
+    const bounds = skeleton.getBoundsRect()
+    if (bounds) {
+      centerX = bounds.x + bounds.width / 2
+      centerY = bounds.y + bounds.height / 2
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  // Adjust camera to see skeleton (closer Z distance)
+  sc.renderer.camera.position.set(-centerX, -centerY, 200)
 
   sc.renderer.begin()
   sc.renderer.drawSkeleton(skeleton, true)
