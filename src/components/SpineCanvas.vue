@@ -207,10 +207,11 @@ const renderSpine = (sc: any) => {
     })
   }
 
-  // Simplified camera - try smaller Z distance
-  sc.renderer.camera.position.x = -centerX
-  sc.renderer.camera.position.y = -centerY  
-  sc.renderer.camera.position.z = 150  // Much closer!
+  // Simplified camera - try different Z and position
+  // Spine uses y-up coordinate system, try different settings
+  sc.renderer.camera.position.x = 0
+  sc.renderer.camera.position.y = 0  
+  sc.renderer.camera.position.z = 150
   sc.renderer.camera.zoom = 1
 
   console.log('Camera:', {
