@@ -182,19 +182,32 @@ const renderSpine = (sc: any) => {
   }
 
   // Get skeleton bounds to center camera
-  let centerX = 0, centerY = 0
+  let centerX = 0, centerY = 0, zoom = 1
   try {
     const bounds = skeleton.getBoundsRect()
     if (bounds) {
       centerX = bounds.x + bounds.width / 2
       centerY = bounds.y + bounds.height / 2
+      
+      // Calculate zoom to fit skeleton in view
+      const scaleX = sc.htmlCanvas.width / bounds.width
+      const scaleY = sc.htmlCanvas.height / bounds.height
+      zoom = Math.min(scaleX, scaleY) * 0.8
     }
   } catch (e) {
     // ignore
   }
 
-  // Adjust camera to see skeleton (closer Z distance)
-  sc.renderer.camera.position.set(-centerX, -centerY, 200)
+  // Adjust camera - key fixes from official examples
+  sc.renderer.camera.position.x = -centerX
+  sc.renderer.camera.position.y = -centerY
+  sc.renderer.camera.position.z = 500
+  sc.renderer.camera.zoom = zoom
+  // Must call update() after changing camera properties!
+  sc.renderer.camera.update()
+
+  // Clear canvas - also key from official examples
+  sc.clear(0.2, 0.2, 0.2, 1)
 
   sc.renderer.begin()
   sc.renderer.drawSkeleton(skeleton, true)
