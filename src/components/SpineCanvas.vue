@@ -183,14 +183,18 @@ const renderSpine = (sc: any) => {
 
   // Center camera on skeleton
   if (sc.renderer.camera) {
-    const bounds = skeleton.getBounds()
-    if (bounds && bounds.offset && bounds.size) {
-      const cx = bounds.offset.x + bounds.size.x / 2
-      const cy = bounds.offset.y + bounds.size.y / 2
-      sc.renderer.camera.position.set(-cx, -cy, 500)
-    } else {
-      // Default camera position
-      sc.renderer.camera.position.set(0, 0, 500)
+    sc.renderer.camera.position.set(0, 0, 500)
+    
+    try {
+      const bounds = skeleton.getBounds()
+      if (bounds && bounds.offset && bounds.size) {
+        const cx = bounds.offset.x + bounds.size.x / 2
+        const cy = bounds.offset.y + bounds.size.y / 2
+        sc.renderer.camera.position.set(-cx, -cy, 500)
+      }
+    } catch (e) {
+      // getBounds can throw if skeleton has no attachments
+      console.warn('Could not get skeleton bounds:', e)
     }
   }
 
