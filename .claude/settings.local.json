@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find C:\\\\project_home\\\\spine_viewer\\\\spine-viewer\\\\node_modules\\\\@esotericsoftware\\\\spine-core\\\\dist:*)",
+      "Bash(xargs cat:*)",
+      "Bash(rtk git:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git stash:*)"
+    ]
+  }
+}

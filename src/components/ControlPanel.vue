@@ -125,11 +125,11 @@
       <h3 class="section-title">Slots & Bones</h3>
       <div class="toggle-group">
         <label class="toggle-label">
-          <input type="checkbox" v-model="showSlots" />
+          <input type="checkbox" v-model="showSlots" @change="emitShowSlotsChange" />
           Show Slots
         </label>
         <label class="toggle-label">
-          <input type="checkbox" v-model="showBones" />
+          <input type="checkbox" v-model="showBones" @change="emitShowBonesChange" />
           Show Bones
         </label>
       </div>
@@ -163,6 +163,8 @@ const props = defineProps<{
   drawCall?: number
   isPlaying?: boolean
   playbackRate?: number
+  showBones?: boolean
+  showSlots?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -172,6 +174,8 @@ const emit = defineEmits<{
   'time-update': [time: number]
   'seek': [time: number]
   'speed-change': [speed: number]
+  'show-bones-change': [value: boolean]
+  'show-slots-change': [value: boolean]
 }>()
 
 const fileInputRef = ref<HTMLInputElement | null>(null)
@@ -185,6 +189,14 @@ const spineVersion = ref('4')
 watch(() => props.currentAnimation, (val) => {
   if (val) localAnimation.value = val
 })
+
+watch(() => props.showBones, (val) => {
+  showBones.value = !!val
+}, { immediate: true })
+
+watch(() => props.showSlots, (val) => {
+  showSlots.value = !!val
+}, { immediate: true })
 
 const canLoad = computed(() => {
   const hasSkeleton = selectedFiles.value.some(f => f.type === 'skeleton')
@@ -269,6 +281,14 @@ const seekTo = (event: Event) => {
 const setSpeed = (event: Event) => {
   const target = event.target as HTMLInputElement
   emit('speed-change', parseFloat(target.value))
+}
+
+const emitShowBonesChange = () => {
+  emit('show-bones-change', showBones.value)
+}
+
+const emitShowSlotsChange = () => {
+  emit('show-slots-change', showSlots.value)
 }
 
 const emitAnimationChange = () => {

@@ -5,6 +5,10 @@
         @file-selected="handleFileSelected"
         @animation-change="handleAnimationChange"
         @playback-change="handlePlaybackChange"
+        @speed-change="handleSpeedChange"
+        @seek="handleSeek"
+        @show-bones-change="handleShowBonesChange"
+        @show-slots-change="handleShowSlotsChange"
         :animations="animations"
         :current-animation="animationName"
         :current-time="currentTime"
@@ -12,6 +16,8 @@
         :draw-call="drawCall"
         :is-playing="isPlaying"
         :playback-rate="playbackRate"
+        :show-bones="showBones"
+        :show-slots="showSlots"
       />
     </aside>
     <main class="main-content">
@@ -26,6 +32,7 @@
         :show-bones="showBones"
         :show-slots="showSlots"
         @loaded="(data) => handleLoaded(data)"
+        @time-update="(time, animDuration, frameDrawCall) => handleTimeUpdate(time, animDuration, frameDrawCall)"
         @error="(err) => handleError(err)"
       />
     </main>
@@ -66,6 +73,23 @@ const handlePlaybackChange = (playing: boolean) => {
   isPlaying.value = playing
 }
 
+const handleSpeedChange = (speed: number) => {
+  playbackRate.value = speed
+}
+
+const handleSeek = (time: number) => {
+  currentTime.value = time
+  spineCanvasRef.value?.seekTo(time)
+}
+
+const handleShowBonesChange = (value: boolean) => {
+  showBones.value = value
+}
+
+const handleShowSlotsChange = (value: boolean) => {
+  showSlots.value = value
+}
+
 const handleLoaded = (data: { animations: string[]; skeletonName: string; drawCall: number; duration: number }) => {
   animations.value = data.animations
   if (data.animations.length > 0) {
@@ -73,6 +97,13 @@ const handleLoaded = (data: { animations: string[]; skeletonName: string; drawCa
     duration.value = data.duration || 2.5
   }
   drawCall.value = data.drawCall
+  currentTime.value = 0
+}
+
+const handleTimeUpdate = (time: number, animDuration: number, frameDrawCall: number) => {
+  currentTime.value = time
+  duration.value = animDuration || duration.value
+  drawCall.value = frameDrawCall
 }
 
 const handleError = (error: string) => {
