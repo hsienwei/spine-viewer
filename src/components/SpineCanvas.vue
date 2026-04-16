@@ -32,22 +32,31 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
-
-let spine: any = null
+import { Spine3RuntimeAdapter, Spine4RuntimeAdapter } from '../lib/spine/adapters'
+import { detectSpineVersion } from '../lib/spine/versionDetection'
+import type { SpineSelectionState, SpineSkeletonStructure } from '../lib/spine/skeletonStructure'
+import type { SpineRuntimeSession } from '../lib/spine/adapters'
+import type { SpineVersionMode } from '../lib/spine/versionDetection'
 
 const props = defineProps<{
-  skeletonUrl?: string
-  atlasUrl?: string
-  textures?: string[]
+  files?: File[]
+  versionMode?: SpineVersionMode
   animationName?: string
   isPlaying?: boolean
   playbackRate?: number
   showBones?: boolean
   showSlots?: boolean
+  selection?: SpineSelectionState
 }>()
 
 const emit = defineEmits<{
-  (e: 'loaded', data: { animations: string[]; skeletonName: string; drawCall: number; duration: number }): void
+  (e: 'loaded', data: {
+    animations: string[]
+    skeletonName: string
+    drawCall: number
+    duration: number
+    structure: SpineSkeletonStructure
+  }): void
   (e: 'error', error: string): void
   (e: 'timeUpdate', currentTime: number, duration: number, drawCall: number): void
 }>()
@@ -55,69 +64,66 @@ const emit = defineEmits<{
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const loading = ref(false)
 const errorMsg = ref('')
-
-let spineCanvas: any = null
-let skeleton: any = null
-let animationState: any = null
-let preloadedImages: Map<string, HTMLImageElement> = new Map()
 const isViewerReady = ref(false)
-const viewScale = ref(1)
-const panOffset = ref({ x: 0, y: 0 })
 const isPanning = ref(false)
 const currentBounds = ref({ width: 0, height: 0 })
+const panOffset = ref({ x: 0, y: 0 })
+const viewScale = ref(1)
 
+let activeSession: SpineRuntimeSession | null = null
+let loadRequestId = 0
 let activePointerId: number | null = null
 let lastPointerPosition = { x: 0, y: 0 }
+let resizeObserver: ResizeObserver | null = null
 
+const runtimeAdapters = {
+  3: new Spine3RuntimeAdapter(),
+  4: new Spine4RuntimeAdapter()
+} as const
 const hasValidBounds = computed(() => currentBounds.value.width > 0 && currentBounds.value.height > 0)
 const showViewportOverlay = computed(() => {
   return isViewerReady.value && hasValidBounds.value && !loading.value && !errorMsg.value
 })
-const FIT_PADDING_RATIO = 0.92
 const zoomPercent = computed(() => `${Math.round(viewScale.value * 100)}%`)
 const offsetXPercent = computed(() => formatOffsetPercent(panOffset.value.x, currentBounds.value.width))
 const offsetYPercent = computed(() => formatOffsetPercent(panOffset.value.y, currentBounds.value.height))
 
-const getCurrentTrack = () => animationState?.getCurrent(0) || null
+const setLoadError = (message: string) => {
+  errorMsg.value = message
+  isViewerReady.value = false
+  loading.value = false
+  emit('error', message)
+}
 
-const getAnimationDuration = (): number => {
-  const track = getCurrentTrack()
-  return track?.animation?.duration || 0
+const disposeCurrentSession = () => {
+  activeSession?.dispose()
+  activeSession = null
+  isViewerReady.value = false
+  currentBounds.value = { width: 0, height: 0 }
+  panOffset.value = { x: 0, y: 0 }
+  viewScale.value = 1
+}
+
+const syncSessionState = () => {
+  if (!activeSession) return
+
+  activeSession.setPlayback(props.isPlaying !== false, props.playbackRate || 1)
+  activeSession.setDebugOptions({
+    showBones: !!props.showBones,
+    showSlots: !!props.showSlots
+  })
+  activeSession.setSelection(props.selection || { boneName: null, slotName: null })
+  viewScale.value = activeSession.getViewScale()
 }
 
 const seekTo = (time: number) => {
-  const track = getCurrentTrack()
-  if (!track || !skeleton || !animationState) return
-
-  const duration = track.animation?.duration || 0
-  const nextTime = duration > 0 ? Math.max(0, Math.min(time, duration)) : Math.max(0, time)
-  track.trackTime = nextTime
-  track.animationLast = nextTime
-  animationState.apply(skeleton)
-  skeleton.updateWorldTransform(spine.Physics.update)
+  activeSession?.seekTo(time)
 }
 
-const preloadTextures = async (): Promise<void> => {
-  if (!props.textures || props.textures.length === 0) return
-  
-  const promises = props.textures.map((texUrl: string) => {
-    return new Promise<void>((resolve) => {
-      const img = new Image()
-      img.crossOrigin = 'anonymous'
-      img.onload = () => {
-        const filename = texUrl.split('/').pop() || texUrl
-        preloadedImages.set(filename, img)
-        resolve()
-      }
-      img.onerror = () => {
-        console.error(`Failed to preload: ${texUrl}`)
-        resolve()
-      }
-      img.src = texUrl
-    })
-  })
-  
-  await Promise.all(promises)
+const resetView = () => {
+  activeSession?.resetView()
+  panOffset.value = { x: 0, y: 0 }
+  viewScale.value = activeSession?.getViewScale() || 1
 }
 
 const formatOffsetPercent = (offset: number, size: number): string => {
@@ -125,11 +131,6 @@ const formatOffsetPercent = (offset: number, size: number): string => {
   const percent = (offset / size) * 100
   const rounded = Math.round(percent * 10) / 10
   return `${rounded > 0 ? '+' : ''}${rounded}%`
-}
-
-const resetView = () => {
-  viewScale.value = 1
-  panOffset.value = { x: 0, y: 0 }
 }
 
 const getCanvasScreenPoint = (clientX: number, clientY: number) => {
@@ -146,225 +147,135 @@ const getCanvasScreenPoint = (clientX: number, clientY: number) => {
 }
 
 const loadSpine = async () => {
-  if (!props.skeletonUrl || !props.atlasUrl || !canvasRef.value) return
-  
+  if (!props.files?.length || !canvasRef.value) return
+
+  const requestId = ++loadRequestId
   loading.value = true
   errorMsg.value = ''
-  isViewerReady.value = false
-  currentBounds.value = { width: 0, height: 0 }
-  resetView()
+  disposeCurrentSession()
+  loading.value = true
 
   try {
-    if (!spine) {
-      const module = await import('@esotericsoftware/spine-webgl')
-      spine = module
-    }
+    const detection = await detectSpineVersion(props.files, props.versionMode || 'auto')
+    if (requestId !== loadRequestId) return
 
-    await preloadTextures()
-
-    const canvas = canvasRef.value
-    canvas.width = canvas.clientWidth * window.devicePixelRatio
-    canvas.height = canvas.clientHeight * window.devicePixelRatio
-
-    const app = {
-      loadAssets: (sc: any) => {
-        sc.assetManager.loadText(props.skeletonUrl!)
-        sc.assetManager.loadText(props.atlasUrl!)
+    const adapter = runtimeAdapters[detection.selectedVersion]
+    const session = await adapter.createSession({
+      canvas: canvasRef.value,
+      sourceFiles: detection.sourceFiles,
+      animationName: props.animationName,
+      onLoaded: (data) => {
+        if (requestId !== loadRequestId) return
+        isViewerReady.value = true
+        loading.value = false
+        emit('loaded', data)
       },
-      initialize: (sc: any) => {
-        initializeSpine(sc)
+      onError: (message) => {
+        if (requestId !== loadRequestId) return
+        setLoadError(message)
       },
-      render: (sc: any) => {
-        renderSpine(sc)
+      onTimeUpdate: (time, duration, drawCall) => {
+        if (requestId !== loadRequestId) return
+        emit('timeUpdate', time, duration, drawCall)
+      },
+      onViewState: (state) => {
+        if (requestId !== loadRequestId) return
+        currentBounds.value = state.bounds
+        panOffset.value = state.panOffset
+        viewScale.value = state.viewScale
       }
-    }
+    })
 
-    const config = {
-      app,
-      pathPrefix: '',
-      webglConfig: { alpha: true }
-    }
-
-    spineCanvas = new spine.SpineCanvas(canvas, config)
-    
-  } catch (e) {
-    errorMsg.value = e instanceof Error ? e.message : 'Failed to load'
-    isViewerReady.value = false
-    emit('error', errorMsg.value)
-  }
-  
-  loading.value = false
-}
-
-const initializeSpine = (sc: any) => {
-  try {
-    const atlasText = sc.assetManager.get(props.atlasUrl!)
-    const skeletonText = sc.assetManager.get(props.skeletonUrl!)
-
-    if (!atlasText || !skeletonText) {
-      errorMsg.value = 'Failed to load assets'
+    if (requestId !== loadRequestId) {
+      session.dispose()
       return
     }
 
-    // TextureAtlas 只接受 atlasText，不接受 callback
-    const atlas = new spine.TextureAtlas(atlasText)
-
-    // 為每個 atlas page 設定對應的 GLTexture
-    for (const page of atlas.pages) {
-      const img = preloadedImages.get(page.name)
-        || preloadedImages.get(page.name + '.png')
-        || preloadedImages.get(page.name + '.jpg')
-        || Array.from(preloadedImages.values())[0]
-
-      if (img) {
-        page.setTexture(new spine.GLTexture(sc.gl, img))
-      } else {
-        console.warn(`No preloaded image for atlas page: ${page.name}`)
-      }
-    }
-
-    const atlasLoader = new spine.AtlasAttachmentLoader(atlas)
-    const skeletonJson = new spine.SkeletonJson(atlasLoader)
-    const skeletonData = skeletonJson.readSkeletonData(skeletonText)
-
-    skeleton = new spine.Skeleton(skeletonData)
-    const animationStateData = new spine.AnimationStateData(skeletonData)
-    animationState = new spine.AnimationState(animationStateData)
-
-    const animations = skeletonData.animations.map((a: any) => a.name)
-    const firstAnim = props.animationName || animations[0]
-    
-    if (firstAnim && animationState) {
-      animationState.setAnimation(0, firstAnim, true)
-    }
-
-    const animData = skeletonData.animations.find((a: any) => a.name === firstAnim)
-    const duration = animData?.duration || 0
-    isViewerReady.value = true
-
-    emit('loaded', {
-      animations,
-      skeletonName: skeletonData.name || 'spine',
-      drawCall: 0,
-      duration
-    })
-
+    activeSession = session
+    syncSessionState()
   } catch (e) {
-    errorMsg.value = e instanceof Error ? e.message : 'Failed to initialize'
-    isViewerReady.value = false
-    emit('error', errorMsg.value)
+    if (requestId === loadRequestId) {
+      setLoadError(e instanceof Error ? e.message : 'Failed to load')
+    }
   }
 }
 
-const renderSpine = (sc: any) => {
-  if (!skeleton || !animationState || !sc.renderer) return
-
-  const delta = sc.time.delta
-  const timeScale = props.isPlaying !== false ? (props.playbackRate || 1) : 0
-
-  // 正確的 Spine 更新順序：update → apply → updateWorldTransform
-  animationState.update(delta * timeScale)
-  animationState.apply(skeleton)
-  skeleton.update(delta)
-  skeleton.updateWorldTransform(spine.Physics.update)
-
-  const track = animationState.getCurrent(0)
-  let currentTime = 0
-  let animationDuration = 0
-  if (track) {
-    animationDuration = track.animation?.duration || 0
-    currentTime = animationDuration > 0 ? (track.trackTime % animationDuration) : track.trackTime
+watch(() => props.files, (files) => {
+  if (files?.length) {
+    loadSpine()
+    return
   }
 
-  // 根據骨架 bounds 自動定位攝影機
-  const bounds = skeleton.getBoundsRect()
-  if (bounds && bounds.width > 0 && bounds.height > 0) {
-    const camera = sc.renderer.camera
-    const canvasWidth = sc.htmlCanvas.width
-    const canvasHeight = sc.htmlCanvas.height
-    currentBounds.value = { width: bounds.width, height: bounds.height }
+  loadRequestId += 1
+  disposeCurrentSession()
+  errorMsg.value = ''
+}, { deep: false })
 
-    camera.position.x = bounds.x + bounds.width / 2 + panOffset.value.x
-    camera.position.y = bounds.y + bounds.height / 2 + panOffset.value.y
-
-    const scaleX = (canvasWidth / bounds.width) * FIT_PADDING_RATIO
-    const scaleY = (canvasHeight / bounds.height) * FIT_PADDING_RATIO
-    camera.zoom = Math.min(scaleX, scaleY) * viewScale.value
-
-    camera.update()
+watch(() => props.versionMode, () => {
+  if (props.files?.length) {
+    loadSpine()
   }
-
-  sc.clear(0.15, 0.15, 0.15, 1)
-
-  sc.renderer.begin()
-  sc.renderer.drawSkeleton(skeleton, true)
-  if (props.showBones || props.showSlots) {
-    sc.renderer.skeletonDebugRenderer.drawBones = !!props.showBones
-    sc.renderer.skeletonDebugRenderer.drawRegionAttachments = !!props.showSlots
-    sc.renderer.skeletonDebugRenderer.drawBoundingBoxes = false
-    sc.renderer.skeletonDebugRenderer.drawMeshHull = false
-    sc.renderer.skeletonDebugRenderer.drawMeshTriangles = false
-    sc.renderer.skeletonDebugRenderer.drawPaths = false
-    sc.renderer.skeletonDebugRenderer.drawSkeletonXY = false
-    sc.renderer.skeletonDebugRenderer.drawClipping = false
-    sc.renderer.drawSkeletonDebug(skeleton, true)
-  }
-  const frameDrawCall = sc.renderer.batcher.getDrawCalls()
-  sc.renderer.end()
-
-  emit('timeUpdate', currentTime, animationDuration, frameDrawCall)
-}
-
-watch(() => props.skeletonUrl, (val) => {
-  if (val && props.atlasUrl) loadSpine()
 })
 
 watch(() => props.animationName, (animName) => {
-  if (animName && animationState) {
-    animationState.setAnimation(0, animName, true)
+  if (animName && activeSession) {
+    activeSession.setAnimation(animName, true)
   }
 })
 
-watch(() => props.isPlaying, (playing) => {
-  if (playing === false) {
-    const track = getCurrentTrack()
-    if (track) {
-      emit('timeUpdate', track.trackTime, getAnimationDuration(), 0)
-    }
-  }
+watch([() => props.isPlaying, () => props.playbackRate], () => {
+  activeSession?.setPlayback(props.isPlaying !== false, props.playbackRate || 1)
 })
+
+watch([() => props.showBones, () => props.showSlots], () => {
+  activeSession?.setDebugOptions({
+    showBones: !!props.showBones,
+    showSlots: !!props.showSlots
+  })
+})
+
+watch(() => props.selection, (selection) => {
+  activeSession?.setSelection(selection || { boneName: null, slotName: null })
+}, { deep: false })
 
 onMounted(() => {
-  if (props.skeletonUrl && props.atlasUrl) {
+  if (props.files?.length) {
     loadSpine()
   }
-  window.addEventListener('resize', handleResize)
+
+  if (typeof ResizeObserver !== 'undefined' && canvasRef.value) {
+    resizeObserver = new ResizeObserver(() => {
+      handleResize()
+    })
+    resizeObserver.observe(canvasRef.value)
+  } else {
+    window.addEventListener('resize', handleResize)
+  }
 })
 
 onUnmounted(() => {
-  if (spineCanvas) {
-    spineCanvas.dispose()
-  }
+  loadRequestId += 1
+  disposeCurrentSession()
+  resizeObserver?.disconnect()
+  resizeObserver = null
   window.removeEventListener('resize', handleResize)
 })
 
 const handleResize = () => {
-  if (canvasRef.value && spineCanvas) {
-    const canvas = canvasRef.value
-    canvas.width = canvas.clientWidth * window.devicePixelRatio
-    canvas.height = canvas.clientHeight * window.devicePixelRatio
-  }
+  activeSession?.resize()
 }
 
 const handleWheel = (event: WheelEvent) => {
-  if (!skeleton) return
+  if (!activeSession) return
 
   const zoomDelta = event.deltaY < 0 ? 1.1 : 0.9
-  viewScale.value = Math.min(10, Math.max(0.2, viewScale.value * zoomDelta))
+  const nextScale = Math.min(10, Math.max(0.2, activeSession.getViewScale() * zoomDelta))
+  activeSession.adjustViewScale(nextScale)
+  viewScale.value = nextScale
 }
 
 const handlePointerDown = (event: PointerEvent) => {
-  if (!canvasRef.value || !skeleton) return
+  if (!canvasRef.value || !activeSession) return
 
   activePointerId = event.pointerId
   lastPointerPosition = { x: event.clientX, y: event.clientY }
@@ -373,31 +284,24 @@ const handlePointerDown = (event: PointerEvent) => {
 }
 
 const handlePointerMove = (event: PointerEvent) => {
-  if (!isPanning.value || activePointerId !== event.pointerId || !spineCanvas) return
-
-  const camera = spineCanvas.renderer?.camera
-
-  if (!camera?.zoom) return
+  if (!isPanning.value || activePointerId !== event.pointerId || !activeSession) return
 
   const previousPoint = getCanvasScreenPoint(lastPointerPosition.x, lastPointerPosition.y)
   const currentPoint = getCanvasScreenPoint(event.clientX, event.clientY)
 
-  if (!previousPoint || !currentPoint || !spine?.Vector3) return
+  if (!previousPoint || !currentPoint) return
 
-  const previousWorld = camera.screenToWorld(
-    new spine.Vector3(previousPoint.x, previousPoint.y, 0),
-    canvasRef.value!.width,
-    canvasRef.value!.height
-  )
-  const currentWorld = camera.screenToWorld(
-    new spine.Vector3(currentPoint.x, currentPoint.y, 0),
-    canvasRef.value!.width,
-    canvasRef.value!.height
-  )
+  const previousWorld = activeSession.screenToWorld(previousPoint.x, previousPoint.y)
+  const currentWorld = activeSession.screenToWorld(currentPoint.x, currentPoint.y)
 
+  if (!previousWorld || !currentWorld) return
+
+  const dx = previousWorld.x - currentWorld.x
+  const dy = previousWorld.y - currentWorld.y
+  activeSession.panBy(dx, dy)
   panOffset.value = {
-    x: panOffset.value.x + (previousWorld.x - currentWorld.x),
-    y: panOffset.value.y + (previousWorld.y - currentWorld.y)
+    x: panOffset.value.x + dx,
+    y: panOffset.value.y + dy
   }
 
   lastPointerPosition = { x: event.clientX, y: event.clientY }
