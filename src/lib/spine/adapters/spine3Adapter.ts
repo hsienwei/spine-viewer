@@ -363,7 +363,9 @@ export class Spine3RuntimeAdapter implements SpineRuntimeAdapter {
           animationState = new spine.AnimationState(animationStateData)
 
           const animations: string[] = skeletonData.animations.map((a: any) => a.name)
-          const firstAnim = input.animationName || animations[0]
+          const firstAnim = (input.animationName && animations.includes(input.animationName))
+            ? input.animationName
+            : animations[0]
 
           if (firstAnim) {
             animationState.setAnimation(0, firstAnim, true)

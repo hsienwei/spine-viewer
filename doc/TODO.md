@@ -2,11 +2,11 @@
 
 ## Spine 3.8 Vendor Runtime
 
-- Replace `vendor/spine-3.8/dist/spine-webgl-3.8.js` placeholder with a real Spine 3.8 runtime build.
-- Record the Spine 3.8 source branch/tag, build command, output format, and exported namespace in `doc/SPINE-3.8-VENDOR.md`.
-- Implement `Spine3RuntimeAdapter` session initialization after the real 3.8 runtime bundle is available.
-- Validate that the 3.8 bundle exposes the required runtime APIs used by the adapter.
-- Add real 3.x load path verification: load, animation switch, seek, playback rate, debug display, and reload back to 4.x.
+- [x] Replace `vendor/spine-3.8/dist/spine-webgl-3.8.js` placeholder with a real Spine 3.8 runtime build.
+- [x] Record the Spine 3.8 source branch/tag, build command, output format, and exported namespace in `doc/SPINE-3.8-VENDOR.md`.
+- [x] Implement `Spine3RuntimeAdapter` session initialization after the real 3.8 runtime bundle is available.
+- [x] Validate that the 3.8 bundle exposes the required runtime APIs used by the adapter.
+- [x] Add real 3.x load path verification: animation switch, seek, playback rate, debug display, and reload back to 4.x.
 
 ## Version Strategy
 

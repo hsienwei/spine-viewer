@@ -1,6 +1,7 @@
 <template>
   <div class="spine-canvas-container">
     <canvas
+      :key="canvasKey"
       ref="canvasRef"
       class="spine-canvas"
       :class="{ 'is-dragging': isPanning }"
@@ -31,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { Spine3RuntimeAdapter, Spine4RuntimeAdapter } from '../lib/spine/adapters'
 import { detectSpineVersion } from '../lib/spine/versionDetection'
 import type { SpineSelectionState, SpineSkeletonStructure } from '../lib/spine/skeletonStructure'
@@ -62,6 +63,7 @@ const emit = defineEmits<{
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+const canvasKey = ref(0)
 const loading = ref(false)
 const errorMsg = ref('')
 const isViewerReady = ref(false)
@@ -102,6 +104,8 @@ const disposeCurrentSession = () => {
   currentBounds.value = { width: 0, height: 0 }
   panOffset.value = { x: 0, y: 0 }
   viewScale.value = 1
+  // 強制重建 canvas 元素，避免舊 WebGL context 干擾新 session
+  canvasKey.value += 1
 }
 
 const syncSessionState = () => {
@@ -154,6 +158,10 @@ const loadSpine = async () => {
   errorMsg.value = ''
   disposeCurrentSession()
   loading.value = true
+
+  // 等 Vue 重建 canvas 元素後再繼續（canvasKey 已變）
+  await nextTick()
+  if (requestId !== loadRequestId || !canvasRef.value) return
 
   try {
     const detection = await detectSpineVersion(props.files, props.versionMode || 'auto')
