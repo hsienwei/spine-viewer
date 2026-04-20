@@ -1,5 +1,6 @@
 node_modules/
 dist/
+!vendor/**/dist/
 .DS_Store
 *.log
 *.local
