@@ -3,9 +3,22 @@
     <section class="section">
       <h3 class="section-title">Load Spine Files</h3>
 
-      <button class="btn btn-primary" @click="triggerFileInput">
-        Select Files
-      </button>
+      <div class="load-buttons">
+        <button class="btn btn-primary" @click="triggerFileInput">
+          Select Files
+        </button>
+        <button class="btn btn-google" @click="showDriveBrowser = true">
+          <svg width="16" height="16" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
+            <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+            <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+            <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+            <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+            <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+            <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+          </svg>
+          Google Drive
+        </button>
+      </div>
       <input
         ref="fileInputRef"
         type="file"
@@ -94,11 +107,18 @@
       </div>
     </section>
   </div>
+
+  <DriveBrowser
+    v-if="showDriveBrowser"
+    @close="showDriveBrowser = false"
+    @confirm="handleDriveConfirm"
+  />
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { SpineDetectedVersion, SpineMajorVersion, SpineVersionMode } from '../lib/spine/versionDetection'
+import DriveBrowser from './DriveBrowser.vue'
 
 interface FileData {
   name: string
@@ -120,6 +140,8 @@ const emit = defineEmits<{
   'file-selected': [payload: { files: File[]; versionMode: SpineVersionMode }]
   'animation-change': [name: string]
 }>()
+
+const showDriveBrowser = ref(false)
 
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const isDragging = ref(false)
@@ -198,6 +220,11 @@ const loadFiles = () => {
   }
 }
 
+const handleDriveConfirm = (files: File[]) => {
+  showDriveBrowser.value = false
+  if (files.length > 0) processFiles(files)
+}
+
 const emitAnimationChange = () => {
   if (localAnimation.value) {
     emit('animation-change', localAnimation.value)
@@ -268,6 +295,35 @@ const formatTime = (seconds: number): string => {
 .btn-success {
   background: #4caf50;
   color: white;
+}
+
+.load-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.load-buttons .btn {
+  flex: 1;
+}
+
+.btn-google {
+  background: #fff;
+  color: #444;
+  border: 1px solid #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.btn-google:hover:not(:disabled) {
+  background: #f5f5f5;
+}
+
+.btn-google:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btn-success:disabled {
