@@ -28,16 +28,6 @@
         @change="handleFileSelect"
       />
 
-      <div
-        class="drop-zone"
-        :class="{ 'drop-zone-active': isDragging }"
-        @dragover.prevent="isDragging = true"
-        @dragleave="isDragging = false"
-        @drop.prevent="handleDrop"
-      >
-        <span>Drop .json, .atlas, .png files here</span>
-      </div>
-
       <div v-if="selectedFiles.length > 0" class="file-list">
         <div v-for="(file, index) in selectedFiles" :key="index" class="file-item">
           <span class="file-name">{{ file.name }}</span>
@@ -144,7 +134,6 @@ const emit = defineEmits<{
 const showDriveBrowser = ref(false)
 
 const fileInputRef = ref<HTMLInputElement | null>(null)
-const isDragging = ref(false)
 const selectedFiles = ref<FileData[]>([])
 const localAnimation = ref('')
 const spineVersion = ref<SpineVersionMode>('auto')
@@ -182,13 +171,6 @@ const handleFileSelect = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files) {
     processFiles(Array.from(target.files))
-  }
-}
-
-const handleDrop = (event: DragEvent) => {
-  isDragging.value = false
-  if (event.dataTransfer?.files) {
-    processFiles(Array.from(event.dataTransfer.files))
   }
 }
 
@@ -338,20 +320,6 @@ const formatTime = (seconds: number): string => {
   background: rgba(244, 132, 95, 0.1);
   border-radius: 4px;
   border: 1px solid rgba(244, 132, 95, 0.25);
-}
-
-.drop-zone {
-  border: 2px dashed #444;
-  border-radius: 8px;
-  padding: 20px;
-  text-align: center;
-  color: #888;
-  transition: all 0.2s;
-}
-
-.drop-zone-active {
-  border-color: #4a9eff;
-  background: rgba(74, 158, 255, 0.1);
 }
 
 .file-list {
