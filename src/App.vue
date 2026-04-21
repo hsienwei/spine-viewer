@@ -11,7 +11,7 @@
           <span class="sidebar-panel-toggle">{{ isControlPanelOpen ? '−' : '+' }}</span>
         </button>
         <div v-show="isControlPanelOpen" class="sidebar-panel-body">
-          <ControlPanel 
+          <ControlPanel
             @file-selected="handleFileSelected"
             @animation-change="handleAnimationChange"
             :animations="animations"
@@ -19,6 +19,8 @@
             :current-time="currentTime"
             :duration="duration"
             :draw-call="drawCall"
+            :detected-version="detectedVersion"
+            :runtime-version="runtimeVersion"
           />
         </div>
       </div>
@@ -81,7 +83,7 @@ import PlaybackOverlay from './components/PlaybackOverlay.vue'
 import SpineCanvas from './components/SpineCanvas.vue'
 import StructurePanel from './components/StructurePanel.vue'
 import type { SpineSelectionState, SpineSkeletonStructure } from './lib/spine/skeletonStructure'
-import type { SpineVersionMode } from './lib/spine/versionDetection'
+import type { SpineDetectedVersion, SpineMajorVersion, SpineVersionMode } from './lib/spine/versionDetection'
 
 const sourceFiles = ref<File[]>([])
 const versionMode = ref<SpineVersionMode>('auto')
@@ -100,12 +102,16 @@ const selection = ref<SpineSelectionState>({ boneName: null, slotName: null })
 const currentTime = ref(0)
 const duration = ref(0)
 const drawCall = ref(0)
+const detectedVersion = ref<SpineDetectedVersion | null>(null)
+const runtimeVersion = ref<SpineMajorVersion | null>(null)
 
 const hasStructurePanel = computed(() => structure.value.bones.length > 0)
 
 const handleFileSelected = (payload: { files: File[]; versionMode: SpineVersionMode }) => {
   sourceFiles.value = payload.files
   versionMode.value = payload.versionMode
+  detectedVersion.value = null
+  runtimeVersion.value = null
 }
 
 const handleAnimationChange = (name: string) => {
@@ -153,6 +159,8 @@ const handleLoaded = (data: {
   drawCall: number
   duration: number
   structure: SpineSkeletonStructure
+  detectedVersion: SpineDetectedVersion
+  runtimeVersion: SpineMajorVersion
 }) => {
   animations.value = data.animations
   structure.value = data.structure
@@ -163,6 +171,8 @@ const handleLoaded = (data: {
   }
   drawCall.value = data.drawCall
   currentTime.value = 0
+  detectedVersion.value = data.detectedVersion
+  runtimeVersion.value = data.runtimeVersion
 }
 
 const handleTimeUpdate = (time: number, animDuration: number, frameDrawCall: number) => {

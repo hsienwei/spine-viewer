@@ -76,13 +76,25 @@
         <option value="force-4">4.x (Force)</option>
         <option value="force-3">3.x (Force)</option>
       </select>
+      <div v-if="runtimeVersion !== null" class="info-grid version-info">
+        <div class="info-item">
+          <span class="info-label">Detected:</span>
+          <span class="info-value">{{ detectedVersionLabel }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Runtime:</span>
+          <span class="info-value version-badge" :class="`version-badge-${runtimeVersion}`">
+            {{ runtimeVersion }}.x
+          </span>
+        </div>
+      </div>
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { SpineVersionMode } from '../lib/spine/versionDetection'
+import type { SpineDetectedVersion, SpineMajorVersion, SpineVersionMode } from '../lib/spine/versionDetection'
 
 interface FileData {
   name: string
@@ -96,6 +108,8 @@ const props = defineProps<{
   currentTime?: number
   duration?: number
   drawCall?: number
+  detectedVersion?: SpineDetectedVersion | null
+  runtimeVersion?: SpineMajorVersion | null
 }>()
 
 const emit = defineEmits<{
@@ -178,6 +192,12 @@ const emitAnimationChange = () => {
     emit('animation-change', localAnimation.value)
   }
 }
+
+const detectedVersionLabel = computed(() => {
+  if (props.detectedVersion === 3) return '3.x'
+  if (props.detectedVersion === 4) return '4.x'
+  return 'unknown'
+})
 
 const formatTime = (seconds: number): string => {
   const mins = Math.floor(seconds / 60)
@@ -313,5 +333,26 @@ const formatTime = (seconds: number): string => {
 
 .info-value {
   color: #ddd;
+}
+
+.version-info {
+  margin-top: 2px;
+}
+
+.version-badge {
+  font-weight: 600;
+  font-size: 12px;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.version-badge-3 {
+  color: #f9c74f;
+  background: rgba(249, 199, 79, 0.12);
+}
+
+.version-badge-4 {
+  color: #4fc3f7;
+  background: rgba(79, 195, 247, 0.12);
 }
 </style>

@@ -37,7 +37,7 @@ import { Spine3RuntimeAdapter, Spine4RuntimeAdapter } from '../lib/spine/adapter
 import { detectSpineVersion } from '../lib/spine/versionDetection'
 import type { SpineSelectionState, SpineSkeletonStructure } from '../lib/spine/skeletonStructure'
 import type { SpineRuntimeSession } from '../lib/spine/adapters'
-import type { SpineVersionMode } from '../lib/spine/versionDetection'
+import type { SpineDetectedVersion, SpineMajorVersion, SpineVersionMode } from '../lib/spine/versionDetection'
 
 const props = defineProps<{
   files?: File[]
@@ -57,6 +57,8 @@ const emit = defineEmits<{
     drawCall: number
     duration: number
     structure: SpineSkeletonStructure
+    detectedVersion: SpineDetectedVersion
+    runtimeVersion: SpineMajorVersion
   }): void
   (e: 'error', error: string): void
   (e: 'timeUpdate', currentTime: number, duration: number, drawCall: number): void
@@ -176,7 +178,11 @@ const loadSpine = async () => {
         if (requestId !== loadRequestId) return
         isViewerReady.value = true
         loading.value = false
-        emit('loaded', data)
+        emit('loaded', {
+          ...data,
+          detectedVersion: detection.detectedVersion,
+          runtimeVersion: detection.selectedVersion
+        })
       },
       onError: (message) => {
         if (requestId !== loadRequestId) return
