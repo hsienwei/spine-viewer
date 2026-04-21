@@ -14,6 +14,7 @@
           <ControlPanel
             @file-selected="handleFileSelected"
             @animation-change="handleAnimationChange"
+            @premultiply-alpha-change="handlePremultipliedAlphaChange"
             :animations="animations"
             :current-animation="animationName"
             :current-time="currentTime"
@@ -21,6 +22,7 @@
             :draw-call="drawCall"
             :detected-version="detectedVersion"
             :runtime-version="runtimeVersion"
+            :premultiplied-alpha="premultipliedAlpha"
           />
         </div>
       </div>
@@ -57,6 +59,7 @@
         :show-bones="showBones"
         :show-slots="showSlots"
         :selection="selection"
+        :premultiplied-alpha="premultipliedAlpha"
         @loaded="(data) => handleLoaded(data)"
         @time-update="(time, animDuration, frameDrawCall) => handleTimeUpdate(time, animDuration, frameDrawCall)"
         @error="(err) => handleError(err)"
@@ -90,6 +93,7 @@ const isPlaying = ref(true)
 const playbackRate = ref(1)
 const showBones = ref(false)
 const showSlots = ref(false)
+const premultipliedAlpha = ref(true)
 const spineCanvasRef = ref<InstanceType<typeof SpineCanvas> | null>(null)
 const isControlPanelOpen = ref(true)
 const isStructurePanelOpen = ref(true)
@@ -134,6 +138,10 @@ const handleShowBonesChange = (value: boolean) => {
 
 const handleShowSlotsChange = (value: boolean) => {
   showSlots.value = value
+}
+
+const handlePremultipliedAlphaChange = (value: boolean) => {
+  premultipliedAlpha.value = value
 }
 
 const handleBoneSelected = (boneName: string) => {

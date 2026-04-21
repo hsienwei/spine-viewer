@@ -58,6 +58,7 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
       let currentSelection = { boneName: null as string | null, slotName: null as string | null }
       let playbackEnabled = true
       let playbackRate = 1
+      let premultipliedAlpha = input.premultipliedAlpha ?? true
       let settled = false
       let disposed = false
       let currentBounds = { width: 0, height: 0 }
@@ -129,6 +130,9 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
         setPlayback: (enabled: boolean, nextRate: number) => {
           playbackEnabled = enabled
           playbackRate = nextRate
+        },
+        setPremultipliedAlpha: (value: boolean) => {
+          premultipliedAlpha = value
         },
         setDebugOptions: (options: SpineDebugOptions) => {
           currentDebugOptions = options
@@ -289,7 +293,7 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
         sc.clear(0.15, 0.15, 0.15, 1)
 
         sc.renderer.begin()
-        sc.renderer.drawSkeleton(skeleton, true)
+        sc.renderer.drawSkeleton(skeleton, premultipliedAlpha)
         if (currentDebugOptions.showBones || currentDebugOptions.showSlots) {
           sc.renderer.skeletonDebugRenderer.drawBones = currentDebugOptions.showBones
           sc.renderer.skeletonDebugRenderer.drawRegionAttachments = currentDebugOptions.showSlots
@@ -299,7 +303,7 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
           sc.renderer.skeletonDebugRenderer.drawPaths = false
           sc.renderer.skeletonDebugRenderer.drawSkeletonXY = false
           sc.renderer.skeletonDebugRenderer.drawClipping = false
-          sc.renderer.drawSkeletonDebug(skeleton, true)
+          sc.renderer.drawSkeletonDebug(skeleton, premultipliedAlpha)
         }
         drawSelectionHighlight(sc)
         const frameDrawCall = sc.renderer.batcher.getDrawCalls()
@@ -372,7 +376,7 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
             }
           },
           pathPrefix: '',
-          webglConfig: { alpha: true }
+          webglConfig: { alpha: true, premultipliedAlpha: input.premultipliedAlpha ?? true }
         })
       } catch (e) {
         fail(e instanceof Error ? e.message : 'Failed to load')

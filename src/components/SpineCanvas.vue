@@ -47,6 +47,7 @@ const props = defineProps<{
   showBones?: boolean
   showSlots?: boolean
   selection?: SpineSelectionState
+  premultipliedAlpha?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -118,6 +119,7 @@ const syncSessionState = () => {
     showSlots: !!props.showSlots
   })
   activeSession.setSelection(props.selection || { boneName: null, slotName: null })
+  activeSession.setPremultipliedAlpha(props.premultipliedAlpha ?? true)
   viewScale.value = activeSession.getViewScale()
 }
 
@@ -173,6 +175,7 @@ const loadSpine = async () => {
       canvas: canvasRef.value,
       sourceFiles: detection.sourceFiles,
       animationName: props.animationName,
+      premultipliedAlpha: props.premultipliedAlpha ?? true,
       onLoaded: (data) => {
         if (requestId !== loadRequestId) return
         isViewerReady.value = true
@@ -232,6 +235,10 @@ watch(() => props.animationName, (animName) => {
 
 watch([() => props.isPlaying, () => props.playbackRate], () => {
   activeSession?.setPlayback(props.isPlaying !== false, props.playbackRate || 1)
+})
+
+watch(() => props.premultipliedAlpha, (value) => {
+  activeSession?.setPremultipliedAlpha(value ?? true)
 })
 
 watch([() => props.showBones, () => props.showSlots], () => {

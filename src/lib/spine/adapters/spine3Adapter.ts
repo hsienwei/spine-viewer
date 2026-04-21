@@ -90,6 +90,7 @@ export class Spine3RuntimeAdapter implements SpineRuntimeAdapter {
       let currentSelection = { boneName: null as string | null, slotName: null as string | null }
       let playbackEnabled = true
       let playbackRate = 1
+      let premultipliedAlpha = input.premultipliedAlpha ?? true
       let settled = false
       let disposed = false
       let currentBounds = { width: 0, height: 0 }
@@ -239,7 +240,7 @@ export class Spine3RuntimeAdapter implements SpineRuntimeAdapter {
         gl.clear(gl.COLOR_BUFFER_BIT)
 
         renderer.begin()
-        renderer.drawSkeleton(skeleton, true)
+        renderer.drawSkeleton(skeleton, premultipliedAlpha)
 
         if (currentDebugOptions.showBones || currentDebugOptions.showSlots) {
           renderer.skeletonDebugRenderer.drawBones = currentDebugOptions.showBones
@@ -249,7 +250,7 @@ export class Spine3RuntimeAdapter implements SpineRuntimeAdapter {
           renderer.skeletonDebugRenderer.drawMeshTriangles = false
           renderer.skeletonDebugRenderer.drawPaths = false
           renderer.skeletonDebugRenderer.drawSkeletonXY = false
-          renderer.drawSkeletonDebug(skeleton, true)
+          renderer.drawSkeletonDebug(skeleton, premultipliedAlpha)
         }
 
         drawSelectionHighlight()
@@ -271,6 +272,9 @@ export class Spine3RuntimeAdapter implements SpineRuntimeAdapter {
         setPlayback: (enabled: boolean, nextRate: number) => {
           playbackEnabled = enabled
           playbackRate = nextRate
+        },
+        setPremultipliedAlpha: (value: boolean) => {
+          premultipliedAlpha = value
         },
         setDebugOptions: (options: SpineDebugOptions) => {
           currentDebugOptions = options
@@ -340,7 +344,7 @@ export class Spine3RuntimeAdapter implements SpineRuntimeAdapter {
         if (disposed) return
 
         try {
-          context = new spine.ManagedWebGLRenderingContext(input.canvas, { alpha: true })
+          context = new spine.ManagedWebGLRenderingContext(input.canvas, { alpha: true, premultipliedAlpha: input.premultipliedAlpha ?? true })
           renderer = new spine.SceneRenderer(input.canvas, context)
 
           // 3.8 TextureAtlas uses a synchronous textureLoader callback per atlas page

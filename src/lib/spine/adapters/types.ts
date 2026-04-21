@@ -5,6 +5,7 @@ export interface SpineSessionCreateInput {
   canvas: HTMLCanvasElement
   sourceFiles: SpineSourceFiles
   animationName?: string
+  premultipliedAlpha?: boolean
   onLoaded: (data: {
     animations: string[]
     skeletonName: string
@@ -32,6 +33,7 @@ export interface SpineRuntimeSession {
   setPlayback(enabled: boolean, playbackRate: number): void
   setDebugOptions(options: SpineDebugOptions): void
   setSelection(selection: SpineSelectionState): void
+  setPremultipliedAlpha(value: boolean): void
   seekTo(time: number): void
   resetView(): void
   getViewScale(): number

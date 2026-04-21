@@ -76,6 +76,18 @@
       </div>
     </section>
 
+    <section class="section">
+      <h3 class="section-title">Render Options</h3>
+      <label class="toggle-row">
+        <span class="toggle-label">Premultiplied Alpha</span>
+        <input
+          type="checkbox"
+          :checked="props.premultipliedAlpha ?? true"
+          @change="emit('premultiply-alpha-change', ($event.target as HTMLInputElement).checked)"
+        />
+      </label>
+    </section>
+
     <div v-if="runtimeVersion !== null" class="section info-grid version-info">
       <div class="info-item">
         <span class="info-label">Detected:</span>
@@ -116,11 +128,13 @@ const props = defineProps<{
   drawCall?: number
   detectedVersion?: SpineDetectedVersion | null
   runtimeVersion?: SpineMajorVersion | null
+  premultipliedAlpha?: boolean
 }>()
 
 const emit = defineEmits<{
   'file-selected': [payload: { files: File[] }]
   'animation-change': [name: string]
+  'premultiply-alpha-change': [value: boolean]
 }>()
 
 const showDriveBrowser = ref(false)
@@ -366,6 +380,18 @@ const formatTime = (seconds: number): string => {
 }
 
 .info-value {
+  color: #ddd;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.toggle-label {
   color: #ddd;
 }
 
