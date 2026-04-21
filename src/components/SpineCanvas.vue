@@ -37,11 +37,10 @@ import { Spine3RuntimeAdapter, Spine4RuntimeAdapter } from '../lib/spine/adapter
 import { detectSpineVersion } from '../lib/spine/versionDetection'
 import type { SpineSelectionState, SpineSkeletonStructure } from '../lib/spine/skeletonStructure'
 import type { SpineRuntimeSession } from '../lib/spine/adapters'
-import type { SpineDetectedVersion, SpineMajorVersion, SpineVersionMode } from '../lib/spine/versionDetection'
+import type { SpineDetectedVersion, SpineMajorVersion } from '../lib/spine/versionDetection'
 
 const props = defineProps<{
   files?: File[]
-  versionMode?: SpineVersionMode
   animationName?: string
   isPlaying?: boolean
   playbackRate?: number
@@ -166,7 +165,7 @@ const loadSpine = async () => {
   if (requestId !== loadRequestId || !canvasRef.value) return
 
   try {
-    const detection = await detectSpineVersion(props.files, props.versionMode || 'auto')
+    const detection = await detectSpineVersion(props.files, 'auto')
     if (requestId !== loadRequestId) return
 
     const adapter = runtimeAdapters[detection.selectedVersion]
@@ -224,12 +223,6 @@ watch(() => props.files, (files) => {
   disposeCurrentSession()
   errorMsg.value = ''
 }, { deep: false })
-
-watch(() => props.versionMode, () => {
-  if (props.files?.length) {
-    loadSpine()
-  }
-})
 
 watch(() => props.animationName, (animName) => {
   if (animName && activeSession) {

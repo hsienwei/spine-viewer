@@ -76,26 +76,18 @@
       </div>
     </section>
 
-    <section class="section">
-      <h3 class="section-title">Spine Version</h3>
-      <select v-model="spineVersion" class="select-input">
-        <option value="auto">Auto</option>
-        <option value="force-4">4.x (Force)</option>
-        <option value="force-3">3.x (Force)</option>
-      </select>
-      <div v-if="runtimeVersion !== null" class="info-grid version-info">
-        <div class="info-item">
-          <span class="info-label">Detected:</span>
-          <span class="info-value">{{ detectedVersionLabel }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Runtime:</span>
-          <span class="info-value version-badge" :class="`version-badge-${runtimeVersion}`">
-            {{ runtimeVersion }}.x
-          </span>
-        </div>
+    <div v-if="runtimeVersion !== null" class="section info-grid version-info">
+      <div class="info-item">
+        <span class="info-label">Detected:</span>
+        <span class="info-value">{{ detectedVersionLabel }}</span>
       </div>
-    </section>
+      <div class="info-item">
+        <span class="info-label">Runtime:</span>
+        <span class="info-value version-badge" :class="`version-badge-${runtimeVersion}`">
+          {{ runtimeVersion }}.x
+        </span>
+      </div>
+    </div>
   </div>
 
   <DriveBrowser
@@ -107,7 +99,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { SpineDetectedVersion, SpineMajorVersion, SpineVersionMode } from '../lib/spine/versionDetection'
+import type { SpineDetectedVersion, SpineMajorVersion } from '../lib/spine/versionDetection'
 import DriveBrowser from './DriveBrowser.vue'
 
 interface FileData {
@@ -127,7 +119,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'file-selected': [payload: { files: File[]; versionMode: SpineVersionMode }]
+  'file-selected': [payload: { files: File[] }]
   'animation-change': [name: string]
 }>()
 
@@ -136,7 +128,6 @@ const showDriveBrowser = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const selectedFiles = ref<FileData[]>([])
 const localAnimation = ref('')
-const spineVersion = ref<SpineVersionMode>('auto')
 
 watch(() => props.currentAnimation, (val) => {
   if (val) localAnimation.value = val
@@ -196,8 +187,7 @@ const processFiles = (files: File[]) => {
 const loadFiles = () => {
   if (canLoad.value) {
     emit('file-selected', {
-      files: selectedFiles.value.map(file => file.file),
-      versionMode: spineVersion.value
+      files: selectedFiles.value.map(file => file.file)
     })
   }
 }

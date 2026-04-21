@@ -51,8 +51,7 @@
       <SpineCanvas 
         ref="spineCanvasRef"
         :files="sourceFiles"
-        :version-mode="versionMode"
-        :animation-name="animationName"
+:animation-name="animationName"
         :is-playing="isPlaying"
         :playback-rate="playbackRate"
         :show-bones="showBones"
@@ -83,10 +82,9 @@ import PlaybackOverlay from './components/PlaybackOverlay.vue'
 import SpineCanvas from './components/SpineCanvas.vue'
 import StructurePanel from './components/StructurePanel.vue'
 import type { SpineSelectionState, SpineSkeletonStructure } from './lib/spine/skeletonStructure'
-import type { SpineDetectedVersion, SpineMajorVersion, SpineVersionMode } from './lib/spine/versionDetection'
+import type { SpineDetectedVersion, SpineMajorVersion } from './lib/spine/versionDetection'
 
 const sourceFiles = ref<File[]>([])
-const versionMode = ref<SpineVersionMode>('auto')
 const animationName = ref('')
 const isPlaying = ref(true)
 const playbackRate = ref(1)
@@ -107,9 +105,8 @@ const runtimeVersion = ref<SpineMajorVersion | null>(null)
 
 const hasStructurePanel = computed(() => structure.value.bones.length > 0)
 
-const handleFileSelected = (payload: { files: File[]; versionMode: SpineVersionMode }) => {
+const handleFileSelected = (payload: { files: File[] }) => {
   sourceFiles.value = payload.files
-  versionMode.value = payload.versionMode
   detectedVersion.value = null
   runtimeVersion.value = null
 }
