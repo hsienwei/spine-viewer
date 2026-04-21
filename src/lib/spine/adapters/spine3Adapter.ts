@@ -56,12 +56,12 @@ export class Spine3RuntimeAdapter implements SpineRuntimeAdapter {
 
     const preloadTextures = async () => {
       if (resources.textureUrls.length === 0) return
-      const promises = resources.textureUrls.map((texUrl: string) => {
+      const promises = resources.textureUrls.map((texUrl: string, i: number) => {
         return new Promise<void>((resolve) => {
           const img = new Image()
           img.crossOrigin = 'anonymous'
           img.onload = () => {
-            const filename = texUrl.split('/').pop() || texUrl
+            const filename = input.sourceFiles.textureFiles[i]?.name || texUrl
             preloadedImages.set(filename, img)
             resolve()
           }
@@ -345,10 +345,13 @@ export class Spine3RuntimeAdapter implements SpineRuntimeAdapter {
 
           // 3.8 TextureAtlas uses a synchronous textureLoader callback per atlas page
           const atlas = new spine.TextureAtlas(atlasText, (name: string) => {
+            const baseName = name.replace(/\.\w+$/, '')
             const img = preloadedImages.get(name)
               || preloadedImages.get(name + '.png')
               || preloadedImages.get(name + '.jpg')
-              || Array.from(preloadedImages.values())[0]
+              || preloadedImages.get(baseName)
+              || preloadedImages.get(baseName + '.png')
+              || preloadedImages.get(baseName + '.jpg')
 
             if (!img) throw new Error(`No preloaded image for atlas page: ${name}`)
             return new spine.GLTexture(context, img)

@@ -23,12 +23,12 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
     const preloadTextures = async () => {
       if (resources.textureUrls.length === 0) return
 
-      const promises = resources.textureUrls.map((texUrl: string) => {
+      const promises = resources.textureUrls.map((texUrl: string, i: number) => {
         return new Promise<void>((resolve) => {
           const img = new Image()
           img.crossOrigin = 'anonymous'
           img.onload = () => {
-            const filename = texUrl.split('/').pop() || texUrl
+            const filename = input.sourceFiles.textureFiles[i]?.name || texUrl
             preloadedImages.set(filename, img)
             resolve()
           }
@@ -204,10 +204,13 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
           const atlas = new spine.TextureAtlas(atlasText)
 
           for (const page of atlas.pages) {
+            const baseName = page.name.replace(/\.\w+$/, '')
             const img = preloadedImages.get(page.name)
               || preloadedImages.get(page.name + '.png')
               || preloadedImages.get(page.name + '.jpg')
-              || Array.from(preloadedImages.values())[0]
+              || preloadedImages.get(baseName)
+              || preloadedImages.get(baseName + '.png')
+              || preloadedImages.get(baseName + '.jpg')
 
             if (img) {
               page.setTexture(new spine.GLTexture(sc.gl, img))

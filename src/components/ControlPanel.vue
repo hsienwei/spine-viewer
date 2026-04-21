@@ -32,6 +32,10 @@
         </div>
       </div>
 
+      <div v-if="selectedFiles.length > 0 && missingFiles.length > 0" class="missing-hint">
+        <span>Missing: {{ missingFiles.join(', ') }}</span>
+      </div>
+
       <button
         v-if="selectedFiles.length > 0"
         class="btn btn-success"
@@ -131,6 +135,13 @@ const canLoad = computed(() => {
   const hasSkeleton = selectedFiles.value.some(f => f.type === 'skeleton')
   const hasAtlas = selectedFiles.value.some(f => f.type === 'atlas')
   return hasSkeleton && hasAtlas
+})
+
+const missingFiles = computed(() => {
+  const missing: string[] = []
+  if (!selectedFiles.value.some(f => f.type === 'skeleton')) missing.push('.json')
+  if (!selectedFiles.value.some(f => f.type === 'atlas')) missing.push('.atlas')
+  return missing
 })
 
 const triggerFileInput = () => {
@@ -262,6 +273,15 @@ const formatTime = (seconds: number): string => {
 .btn-success:disabled {
   background: #666;
   cursor: not-allowed;
+}
+
+.missing-hint {
+  font-size: 12px;
+  color: #f4845f;
+  padding: 6px 8px;
+  background: rgba(244, 132, 95, 0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(244, 132, 95, 0.25);
 }
 
 .drop-zone {
