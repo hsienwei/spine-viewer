@@ -73,13 +73,13 @@ const emit = defineEmits<{
 .skeleton-tree {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
 }
 
 .tree-node {
-  border: 1px solid #3a3a3a;
-  border-radius: 8px;
-  background: #2a2a2a;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
   overflow: hidden;
 }
 
@@ -88,13 +88,20 @@ const emit = defineEmits<{
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 7px 10px;
   cursor: pointer;
   list-style: none;
+  transition: background var(--transition);
+}
+
+.tree-summary:hover {
+  background: var(--bg-raised);
 }
 
 .tree-summary.is-selected {
-  background: rgba(143, 183, 255, 0.16);
+  background: var(--accent-dim);
+  border-left: 2px solid var(--accent);
+  padding-left: 8px;
 }
 
 .tree-summary::-webkit-details-marker {
@@ -102,55 +109,79 @@ const emit = defineEmits<{
 }
 
 .tree-summary::before {
-  content: '>';
-  color: #8fb7ff;
-  margin-right: 6px;
+  content: '›';
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  margin-right: 4px;
+  transition: transform var(--transition), color var(--transition);
+  flex-shrink: 0;
 }
 
 .tree-node[open] > .tree-summary::before {
-  content: 'v';
+  transform: rotate(90deg);
+  color: var(--accent);
 }
 
 .bone-name {
-  color: #f1f1f1;
-  font-size: 13px;
+  flex: 1;
+  font-family: var(--font-ui);
+  font-size: 12px;
   font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bone-meta {
-  color: #8b8b8b;
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 .slot-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 0 0 8px;
+  padding: 2px 0 6px;
+  border-top: 1px solid var(--border-muted);
 }
 
 .slot-item {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 8px;
-  padding: 6px 10px;
-  color: #d6d6d6;
-  font-size: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  padding: 5px 10px 5px 24px;
+  font-size: 11px;
   cursor: pointer;
+  transition: background var(--transition);
+}
+
+.slot-item:hover {
+  background: var(--bg-raised);
 }
 
 .slot-item.is-selected {
-  background: rgba(84, 222, 198, 0.18);
-  outline: 1px solid rgba(84, 222, 198, 0.5);
+  background: rgba(95, 173, 130, 0.1);
+  border-left: 2px solid var(--success);
+  padding-left: 22px;
 }
 
 .slot-name {
-  color: #dfe8ff;
+  font-family: var(--font-ui);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .slot-attachment {
-  color: #8b8b8b;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
   text-align: right;
+  flex-shrink: 0;
 }
 </style>

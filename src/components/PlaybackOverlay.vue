@@ -1,48 +1,51 @@
 <template>
   <section v-if="visible" class="playback-overlay">
-    <div class="overlay-header">
-      <span class="overlay-title">Playback</span>
-      <span class="time-display">
-        {{ formatTime(currentTime || 0) }} / {{ formatTime(duration || 0) }}
-      </span>
+    <div class="time-row">
+      <span class="time-current">{{ formatTime(currentTime || 0) }}</span>
+      <span class="time-sep">/</span>
+      <span class="time-total">{{ formatTime(duration || 0) }}</span>
     </div>
 
-    <div class="playback-controls">
-      <button type="button" class="control-button control-button-primary" @click="togglePlay">
-        {{ isPlaying ? 'Pause' : 'Play' }}
-      </button>
-      <button type="button" class="control-button" @click="stop">
-        Stop
-      </button>
-    </div>
-
-    <div class="timeline">
+    <div class="progress-row">
       <input
         type="range"
         :min="0"
         :max="duration || 10"
         step="0.01"
         :value="currentTime || 0"
-        class="slider"
+        class="range-track"
         @input="seekTo($event)"
       />
     </div>
 
-    <div class="speed-control">
-      <div class="speed-meta">
-        <label class="speed-label" for="playback-speed">Speed</label>
-        <span class="speed-value">{{ (playbackRate || 1).toFixed(1) }}x</span>
+    <div class="controls-row">
+      <button type="button" class="ctrl-btn" @click="stop" title="Stop">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+          <rect x="1.5" y="1.5" width="9" height="9" rx="1.5"/>
+        </svg>
+      </button>
+      <button type="button" class="ctrl-btn ctrl-btn--primary" @click="togglePlay" :title="isPlaying ? 'Pause' : 'Play'">
+        <svg v-if="isPlaying" width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+          <rect x="2" y="2" width="3.5" height="10" rx="1"/>
+          <rect x="8.5" y="2" width="3.5" height="10" rx="1"/>
+        </svg>
+        <svg v-else width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+          <path d="M3.5 2.5l9 4.5-9 4.5z"/>
+        </svg>
+      </button>
+
+      <div class="speed-group">
+        <span class="speed-label">{{ (playbackRate || 1).toFixed(1) }}×</span>
+        <input
+          type="range"
+          min="0.1"
+          max="3"
+          step="0.1"
+          :value="playbackRate || 1"
+          class="range-track range-track--speed"
+          @input="setSpeed($event)"
+        />
       </div>
-      <input
-        id="playback-speed"
-        type="range"
-        min="0.1"
-        max="3"
-        step="0.1"
-        :value="playbackRate || 1"
-        class="slider"
-        @input="setSpeed($event)"
-      />
     </div>
   </section>
 </template>
@@ -62,9 +65,7 @@ const emit = defineEmits<{
   'speed-change': [speed: number]
 }>()
 
-const togglePlay = () => {
-  emit('playback-change', !props.isPlaying)
-}
+const togglePlay = () => emit('playback-change', !props.isPlaying)
 
 const stop = () => {
   emit('playback-change', false)
@@ -72,13 +73,11 @@ const stop = () => {
 }
 
 const seekTo = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  emit('seek', parseFloat(target.value))
+  emit('seek', parseFloat((event.target as HTMLInputElement).value))
 }
 
 const setSpeed = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  emit('speed-change', parseFloat(target.value))
+  emit('speed-change', parseFloat((event.target as HTMLInputElement).value))
 }
 
 const formatTime = (seconds: number): string => {
@@ -92,103 +91,178 @@ const formatTime = (seconds: number): string => {
 <style scoped>
 .playback-overlay {
   position: absolute;
-  right: 24px;
-  bottom: 24px;
-  width: min(360px, calc(100% - 32px));
+  right: 20px;
+  bottom: 20px;
+  width: min(320px, calc(100% - 24px));
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px;
-  border: 1px solid rgba(143, 183, 255, 0.22);
-  border-radius: 16px;
-  background: rgba(18, 22, 30, 0.82);
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.32);
-  backdrop-filter: blur(14px);
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-glow);
+  border-radius: var(--radius-lg);
+  background: var(--bg-overlay);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(201, 141, 42, 0.08);
+  backdrop-filter: blur(16px);
   z-index: 2;
 }
 
-.overlay-header,
-.speed-meta {
+/* Time display */
+.time-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
 }
 
-.overlay-title {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #8fb7ff;
+.time-current {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
 }
 
-.time-display {
-  font-size: 12px;
-  color: #d7e2ff;
+.time-sep {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0 2px;
+}
+
+.time-total {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
-.playback-controls {
+/* Progress Range */
+.progress-row {
   display: flex;
+  align-items: center;
+}
+
+/* Controls row */
+.controls-row {
+  display: flex;
+  align-items: center;
   gap: 10px;
 }
 
-.control-button {
-  min-width: 88px;
-  padding: 10px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s, transform 0.2s;
-}
-
-.control-button:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.2);
-  transform: translateY(-1px);
-}
-
-.control-button-primary {
-  background: linear-gradient(135deg, rgba(74, 158, 255, 0.9), rgba(91, 205, 255, 0.78));
-  border-color: rgba(143, 183, 255, 0.4);
-}
-
-.timeline,
-.speed-control {
+.ctrl-btn {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.speed-label,
-.speed-value {
-  font-size: 12px;
-  color: #c0cbdf;
-}
-
-.slider {
-  width: 100%;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
   cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition), border-color var(--transition), color var(--transition), box-shadow var(--transition);
+}
+
+.ctrl-btn:hover {
+  background: var(--bg-raised);
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+
+.ctrl-btn--primary {
+  width: 40px;
+  height: 40px;
+  background: var(--accent-dim);
+  border-color: var(--border-glow);
+  color: var(--accent);
+}
+
+.ctrl-btn--primary:hover {
+  background: var(--accent-glow);
+  box-shadow: 0 0 0 3px rgba(201, 141, 42, 0.15);
+  color: var(--accent);
+}
+
+/* Speed group */
+.speed-group {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.speed-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  width: 30px;
+  text-align: right;
+}
+
+/* Range inputs */
+.range-track {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  background: var(--bg-raised);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+}
+
+.range-track::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid rgba(12, 11, 10, 0.8);
+  box-shadow: 0 0 0 1px var(--accent-glow);
+  transition: box-shadow var(--transition);
+}
+
+.range-track::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid rgba(12, 11, 10, 0.8);
+}
+
+.range-track:hover::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px var(--accent-glow);
+}
+
+.range-track--speed {
+  height: 2px;
+}
+
+.range-track--speed::-webkit-slider-thumb {
+  width: 10px;
+  height: 10px;
 }
 
 @media (max-width: 900px) {
   .playback-overlay {
-    right: 16px;
-    bottom: 16px;
-    width: min(340px, calc(100% - 24px));
+    right: 14px;
+    bottom: 14px;
   }
 }
 
 @media (max-width: 640px) {
   .playback-overlay {
-    left: 12px;
-    right: 12px;
-    bottom: 12px;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
     width: auto;
   }
 }

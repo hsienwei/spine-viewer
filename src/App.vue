@@ -1,14 +1,30 @@
 <template>
   <div class="spine-viewer">
     <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-spine">SPINE</span>
+        <span class="brand-viewer">VIEWER</span>
+        <button class="theme-toggle" @click="toggleTheme" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
+          <svg v-if="isDark" width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M10.01 3.99l1.06-1.06M2.93 11.07l1.06-1.06" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+          <svg v-else width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M11.5 8.5A5 5 0 1 1 5.5 2.5a3.5 3.5 0 0 0 6 6z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
       <div class="sidebar-panel">
         <button
           type="button"
           class="sidebar-panel-header"
           @click="isControlPanelOpen = !isControlPanelOpen"
         >
-          <span>Viewer Controls</span>
-          <span class="sidebar-panel-toggle">{{ isControlPanelOpen ? '−' : '+' }}</span>
+          <span>Controls</span>
+          <svg class="panel-chevron" :class="{ open: isControlPanelOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </button>
         <div v-show="isControlPanelOpen" class="sidebar-panel-body">
           <ControlPanel
@@ -26,14 +42,17 @@
           />
         </div>
       </div>
+
       <div v-if="hasStructurePanel" class="sidebar-panel sidebar-panel-fill">
         <button
           type="button"
           class="sidebar-panel-header"
           @click="isStructurePanelOpen = !isStructurePanelOpen"
         >
-          <span>Slots & Bones</span>
-          <span class="sidebar-panel-toggle">{{ isStructurePanelOpen ? '−' : '+' }}</span>
+          <span>Skeleton</span>
+          <svg class="panel-chevron" :class="{ open: isStructurePanelOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </button>
         <div v-show="isStructurePanelOpen" class="sidebar-panel-body">
           <StructurePanel
@@ -49,11 +68,12 @@
         </div>
       </div>
     </aside>
+
     <main class="main-content">
-      <SpineCanvas 
+      <SpineCanvas
         ref="spineCanvasRef"
         :files="sourceFiles"
-:animation-name="animationName"
+        :animation-name="animationName"
         :is-playing="isPlaying"
         :playback-rate="playbackRate"
         :show-bones="showBones"
@@ -79,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import ControlPanel from './components/ControlPanel.vue'
 import PlaybackOverlay from './components/PlaybackOverlay.vue'
 import SpineCanvas from './components/SpineCanvas.vue'
@@ -108,6 +128,29 @@ const detectedVersion = ref<SpineDetectedVersion | null>(null)
 const runtimeVersion = ref<SpineMajorVersion | null>(null)
 
 const hasStructurePanel = computed(() => structure.value.bones.length > 0)
+
+const THEME_KEY = 'spine-viewer-theme'
+const isDark = ref(true)
+
+const applyTheme = (dark: boolean) => {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+  localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light')
+}
+
+const toggleTheme = () => {
+  isDark.value = !isDark.value
+  applyTheme(isDark.value)
+}
+
+onMounted(() => {
+  const saved = localStorage.getItem(THEME_KEY)
+  if (saved) {
+    isDark.value = saved === 'dark'
+  } else {
+    isDark.value = !window.matchMedia('(prefers-color-scheme: light)').matches
+  }
+  applyTheme(isDark.value)
+})
 
 const handleFileSelected = (payload: { files: File[] }) => {
   sourceFiles.value = payload.files
@@ -192,6 +235,59 @@ const handleError = (error: string) => {
 </script>
 
 <style>
+:root {
+  /* Dark theme (default) */
+  --bg-base:      #0c0b0a;
+  --bg-panel:     #131110;
+  --bg-surface:   #1c1917;
+  --bg-raised:    #242018;
+  --border:       #2e2720;
+  --border-muted: #1f1c17;
+  --border-glow:  rgba(201, 141, 42, 0.35);
+  --bg-overlay:   rgba(13, 11, 10, 0.92);
+
+  --text-primary:   #f5ede0;
+  --text-secondary: #c2ae98;
+  --text-muted:     #8a7e72;
+
+  --accent:       #c98d2a;
+  --accent-dim:   rgba(201, 141, 42, 0.12);
+  --accent-glow:  rgba(201, 141, 42, 0.25);
+  --success:      #5fad82;
+  --info:         #5b96d4;
+  --danger:       #c46b5a;
+
+  --font-ui:   'Syne', 'Noto Sans TC', sans-serif;
+  --font-mono: 'DM Mono', 'Noto Sans TC', monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --transition: 0.15s ease;
+}
+
+:root[data-theme="light"] {
+  --bg-base:      #f5f0e8;
+  --bg-panel:     #ede7db;
+  --bg-surface:   #e4ddd1;
+  --bg-raised:    #d8d0c3;
+  --border:       #c5bdb0;
+  --border-muted: #d4ccbf;
+  --border-glow:  rgba(160, 100, 14, 0.45);
+  --bg-overlay:   rgba(232, 225, 212, 0.95);
+
+  --text-primary:   #1c1610;
+  --text-secondary: #4a4038;
+  --text-muted:     #7a7060;
+
+  --accent:       #a06c10;
+  --accent-dim:   rgba(160, 108, 16, 0.1);
+  --accent-glow:  rgba(160, 108, 16, 0.22);
+  --success:      #2e8a56;
+  --info:         #2e6cb8;
+  --danger:       #b04030;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -202,36 +298,80 @@ html, body, #app {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  font-family: var(--font-ui);
 }
 
 .spine-viewer {
   display: flex;
   width: 100%;
   height: 100%;
-  background: #1a1a1a;
-  color: #fff;
+  background: var(--bg-base);
+  color: var(--text-primary);
 }
 
 .sidebar {
-  width: 320px;
-  min-width: 320px;
-  border-right: 1px solid #333;
+  width: 272px;
+  min-width: 272px;
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 12px;
   overflow: hidden;
-  background: #1d1d1d;
+  background: var(--bg-panel);
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.brand-spine {
+  font-family: var(--font-ui);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+}
+
+.brand-viewer {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.28em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  flex: 1;
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color var(--transition), border-color var(--transition), background var(--transition);
+}
+
+.theme-toggle:hover {
+  color: var(--accent);
+  border-color: var(--border-glow);
+  background: var(--accent-dim);
 }
 
 .sidebar-panel {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border: 1px solid #333;
-  border-radius: 12px;
-  background: #222;
-  overflow: hidden;
+  border-bottom: 1px solid var(--border);
 }
 
 .sidebar-panel-fill {
@@ -244,22 +384,34 @@ html, body, #app {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 11px 16px;
   border: 0;
-  border-bottom: 1px solid #333;
-  background: #272727;
-  color: #f1f1f1;
-  font-size: 13px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   cursor: pointer;
+  transition: color var(--transition), background var(--transition);
+  flex-shrink: 0;
 }
 
-.sidebar-panel-toggle {
-  color: #8fb7ff;
-  font-size: 20px;
-  line-height: 1;
+.sidebar-panel-header:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.panel-chevron {
+  color: var(--text-muted);
+  transition: transform var(--transition), color var(--transition);
+  flex-shrink: 0;
+}
+
+.panel-chevron.open {
+  transform: rotate(180deg);
+  color: var(--accent);
 }
 
 .sidebar-panel-body {

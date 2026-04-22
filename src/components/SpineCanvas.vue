@@ -373,51 +373,91 @@ defineExpose({
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  padding: 16px 24px;
-  border-radius: 8px;
-  font-size: 14px;
 }
 
 .loading-overlay {
-  background: rgba(0, 0, 0, 0.8);
-  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  background: var(--bg-overlay);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-secondary);
+  letter-spacing: 0.06em;
+}
+
+.loading-overlay::before {
+  content: '';
+  display: block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .error-overlay {
-  background: rgba(255, 50, 50, 0.8);
-  color: #ffaaaa;
+  padding: 14px 20px;
+  border-radius: var(--radius-md);
+  background: var(--bg-overlay);
+  border: 1px solid rgba(196, 107, 90, 0.4);
+  backdrop-filter: blur(12px);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--danger);
+  max-width: 320px;
+  text-align: center;
 }
 
 .viewport-overlay {
-  top: 16px;
-  right: 16px;
+  top: 14px;
+  right: 14px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.68);
-  color: #f3f3f3;
-  backdrop-filter: blur(8px);
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  background: var(--bg-overlay);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(10px);
 }
 
 .viewport-metrics {
   display: flex;
-  gap: 10px;
-  font-size: 12px;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
 }
 
 .reset-view-btn {
-  padding: 6px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.06em;
   cursor: pointer;
+  transition: border-color var(--transition), color var(--transition), background var(--transition);
 }
 
 .reset-view-btn:hover {
-  background: rgba(255, 255, 255, 0.14);
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
 }
 </style>

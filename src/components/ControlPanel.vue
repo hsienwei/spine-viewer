@@ -1,14 +1,19 @@
 <template>
   <div class="control-panel">
-    <section class="section">
-      <h3 class="section-title">Load Spine Files</h3>
 
+    <!-- Load Files -->
+    <section class="section">
+      <h3 class="section-title">Load Files</h3>
       <div class="load-buttons">
-        <button class="btn btn-primary" @click="triggerFileInput">
-          Select Files
+        <button class="btn btn-outline" @click="triggerFileInput">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <path d="M6.5 1v8M3 6l3.5 3.5L10 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M1 10v1.5a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5V10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+          Local
         </button>
-        <button class="btn btn-google" @click="showDriveBrowser = true">
-          <svg width="16" height="16" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
+        <button class="btn btn-outline" @click="showDriveBrowser = true">
+          <svg width="14" height="12" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
             <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
             <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
             <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
@@ -16,7 +21,7 @@
             <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
             <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
           </svg>
-          Google Drive
+          Drive
         </button>
       </div>
       <input
@@ -30,18 +35,19 @@
 
       <div v-if="selectedFiles.length > 0" class="file-list">
         <div v-for="(file, index) in selectedFiles" :key="index" class="file-item">
+          <span class="file-type-dot" :class="`file-type-dot--${file.type}`"></span>
           <span class="file-name">{{ file.name }}</span>
-          <span class="file-type">{{ getFileType(file.name) }}</span>
+          <span class="file-ext">{{ getFileExt(file.name) }}</span>
         </div>
       </div>
 
       <div v-if="selectedFiles.length > 0 && missingFiles.length > 0" class="missing-hint">
-        <span>Missing: {{ missingFiles.join(', ') }}</span>
+        Missing: {{ missingFiles.join(', ') }}
       </div>
 
       <button
         v-if="selectedFiles.length > 0"
-        class="btn btn-success"
+        class="btn btn-accent"
         :disabled="!canLoad"
         @click="loadFiles"
       >
@@ -49,57 +55,69 @@
       </button>
     </section>
 
+    <!-- Animation -->
     <section v-if="animations && animations.length > 0" class="section">
       <h3 class="section-title">Animation</h3>
-      <select v-model="localAnimation" class="select-input" @change="emitAnimationChange">
-        <option v-for="anim in animations" :key="anim" :value="anim">
-          {{ anim }}
-        </option>
-      </select>
+      <div class="select-wrapper">
+        <select v-model="localAnimation" class="select-input" @change="emitAnimationChange">
+          <option v-for="anim in animations" :key="anim" :value="anim">{{ anim }}</option>
+        </select>
+        <svg class="select-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
     </section>
 
+    <!-- Info -->
     <section v-if="animations && animations.length > 0" class="section">
       <h3 class="section-title">Info</h3>
       <div class="info-grid">
-        <div class="info-item">
-          <span class="info-label">Animation:</span>
-          <span class="info-value">{{ currentAnimation || '-' }}</span>
+        <div class="info-row">
+          <span class="info-label">Animation</span>
+          <span class="info-value">{{ currentAnimation || '—' }}</span>
         </div>
-        <div class="info-item">
-          <span class="info-label">Time:</span>
-          <span class="info-value">{{ formatTime(currentTime || 0) }}</span>
+        <div class="info-row">
+          <span class="info-label">Time</span>
+          <span class="info-value mono">{{ formatTime(currentTime || 0) }}</span>
         </div>
-        <div class="info-item">
-          <span class="info-label">DrawCall:</span>
-          <span class="info-value">{{ drawCall || 0 }}</span>
+        <div class="info-row">
+          <span class="info-label">Draw Calls</span>
+          <span class="info-value mono">{{ drawCall || 0 }}</span>
         </div>
       </div>
     </section>
 
+    <!-- Render Options -->
     <section class="section">
-      <h3 class="section-title">Render Options</h3>
+      <h3 class="section-title">Render</h3>
       <label class="toggle-row">
-        <span class="toggle-label">Premultiplied Alpha</span>
-        <input
-          type="checkbox"
-          :checked="props.premultipliedAlpha ?? true"
-          @change="emit('premultiply-alpha-change', ($event.target as HTMLInputElement).checked)"
-        />
+        <span class="toggle-label-text">Premultiplied Alpha</span>
+        <span class="toggle-switch">
+          <input
+            type="checkbox"
+            class="toggle-input"
+            :checked="props.premultipliedAlpha ?? true"
+            @change="emit('premultiply-alpha-change', ($event.target as HTMLInputElement).checked)"
+          />
+          <span class="toggle-track">
+            <span class="toggle-thumb"></span>
+          </span>
+        </span>
       </label>
     </section>
 
-    <div v-if="runtimeVersion !== null" class="section info-grid version-info">
-      <div class="info-item">
-        <span class="info-label">Detected:</span>
-        <span class="info-value">{{ detectedVersionLabel }}</span>
+    <!-- Version Info -->
+    <div v-if="runtimeVersion !== null" class="version-section">
+      <div class="version-row">
+        <span class="version-label">Detected</span>
+        <span class="version-value">{{ detectedVersionLabel }}</span>
       </div>
-      <div class="info-item">
-        <span class="info-label">Runtime:</span>
-        <span class="info-value version-badge" :class="`version-badge-${runtimeVersion}`">
-          {{ runtimeVersion }}.x
-        </span>
+      <div class="version-row">
+        <span class="version-label">Runtime</span>
+        <span class="version-badge" :class="`version-badge--${runtimeVersion}`">v{{ runtimeVersion }}.x</span>
       </div>
     </div>
+
   </div>
 
   <DriveBrowser
@@ -138,7 +156,6 @@ const emit = defineEmits<{
 }>()
 
 const showDriveBrowser = ref(false)
-
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const selectedFiles = ref<FileData[]>([])
 const localAnimation = ref('')
@@ -164,12 +181,8 @@ const triggerFileInput = () => {
   fileInputRef.value?.click()
 }
 
-const getFileType = (filename: string): string => {
-  const ext = filename.split('.').pop()?.toLowerCase() || ''
-  if (ext === 'json') return 'Skeleton'
-  if (ext === 'atlas') return 'Atlas'
-  if (ext === 'png') return 'Texture'
-  return ext
+const getFileExt = (filename: string): string => {
+  return '.' + (filename.split('.').pop()?.toLowerCase() || '')
 }
 
 const handleFileSelect = (event: Event) => {
@@ -180,29 +193,18 @@ const handleFileSelect = (event: Event) => {
 }
 
 const processFiles = (files: File[]) => {
-  const newFiles: FileData[] = files.map(file => {
+  selectedFiles.value = files.map(file => {
     const ext = file.name.split('.').pop()?.toLowerCase()
-
     let type: 'skeleton' | 'atlas' | 'texture' = 'texture'
     if (ext === 'json') type = 'skeleton'
     else if (ext === 'atlas') type = 'atlas'
-    else if (ext === 'png') type = 'texture'
-
-    return {
-      name: file.name,
-      file,
-      type
-    }
+    return { name: file.name, file, type }
   })
-
-  selectedFiles.value = newFiles
 }
 
 const loadFiles = () => {
   if (canLoad.value) {
-    emit('file-selected', {
-      files: selectedFiles.value.map(file => file.file)
-    })
+    emit('file-selected', { files: selectedFiles.value.map(f => f.file) })
   }
 }
 
@@ -235,12 +237,18 @@ const formatTime = (seconds: number): string => {
 .control-panel {
   height: 100%;
   min-height: 0;
-  padding: 16px;
+  padding: 14px 14px 20px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 22px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
+
+.control-panel::-webkit-scrollbar { width: 4px; }
+.control-panel::-webkit-scrollbar-track { background: transparent; }
+.control-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 .section {
   display: flex;
@@ -249,38 +257,64 @@ const formatTime = (seconds: number): string => {
 }
 
 .section-title {
-  font-size: 14px;
+  font-family: var(--font-ui);
+  font-size: 10px;
   font-weight: 600;
-  color: #aaa;
+  color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.14em;
 }
 
-.hidden-input {
-  display: none;
-}
+.hidden-input { display: none; }
 
+/* Buttons */
 .btn {
-  padding: 10px 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--transition), border-color var(--transition), color var(--transition), box-shadow var(--transition);
+  white-space: nowrap;
 }
 
-.btn-primary {
-  background: #4a9eff;
-  color: white;
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
 }
 
-.btn-primary:hover {
-  background: #3a8eef;
+.btn-outline:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
 }
 
-.btn-success {
-  background: #4caf50;
-  color: white;
+.btn-accent {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: #0c0b0a;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.btn-accent:hover:not(:disabled) {
+  background: #dba040;
+  border-color: #dba040;
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.btn-accent:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .load-buttons {
@@ -292,127 +326,241 @@ const formatTime = (seconds: number): string => {
   flex: 1;
 }
 
-.btn-google {
-  background: #fff;
-  color: #444;
-  border: 1px solid #ccc;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-size: 13px;
-}
-
-.btn-google:hover:not(:disabled) {
-  background: #f5f5f5;
-}
-
-.btn-google:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-success:disabled {
-  background: #666;
-  cursor: not-allowed;
-}
-
-.missing-hint {
-  font-size: 12px;
-  color: #f4845f;
-  padding: 6px 8px;
-  background: rgba(244, 132, 95, 0.1);
-  border-radius: 4px;
-  border: 1px solid rgba(244, 132, 95, 0.25);
-}
-
+/* File List */
 .file-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .file-item {
   display: flex;
-  justify-content: space-between;
-  padding: 8px;
-  background: #333;
-  border-radius: 4px;
-  font-size: 12px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
 }
 
+.file-type-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.file-type-dot--skeleton { background: var(--info); }
+.file-type-dot--atlas    { background: var(--success); }
+.file-type-dot--texture  { background: var(--accent); }
+
 .file-name {
-  color: #ddd;
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.file-type {
-  color: #888;
+.file-ext {
+  font-family: var(--font-mono);
   font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.missing-hint {
+  font-size: 11px;
+  color: var(--danger);
+  padding: 6px 8px;
+  background: rgba(196, 107, 90, 0.08);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(196, 107, 90, 0.2);
+}
+
+/* Custom Select */
+.select-wrapper {
+  position: relative;
 }
 
 .select-input {
   width: 100%;
-  padding: 10px;
-  background: #333;
-  border: 1px solid #444;
-  border-radius: 6px;
-  color: white;
-  font-size: 14px;
+  padding: 9px 32px 9px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color var(--transition);
 }
 
+.select-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.select-input option {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.select-chevron {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* Info Grid */
 .info-grid {
   display: flex;
   flex-direction: column;
+  gap: 6px;
+}
+
+.info-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.info-item {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-}
-
 .info-label {
-  color: #888;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .info-value {
-  color: #ddd;
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60%;
+  text-align: right;
 }
 
+.info-value.mono {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  font-size: 11px;
+}
+
+/* Toggle Switch */
 .toggle-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 13px;
+  gap: 12px;
   cursor: pointer;
+  user-select: none;
 }
 
-.toggle-label {
-  color: #ddd;
+.toggle-label-text {
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
-.version-info {
-  margin-top: 2px;
+.toggle-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.toggle-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-track {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 19px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 11px;
+  height: 11px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: transform var(--transition), background var(--transition);
+}
+
+.toggle-input:checked + .toggle-track {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+
+.toggle-input:checked + .toggle-track .toggle-thumb {
+  transform: translateX(15px);
+  background: var(--accent);
+}
+
+/* Version */
+.version-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-md);
+}
+
+.version-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.version-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.version-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 
 .version-badge {
-  font-weight: 600;
-  font-size: 12px;
-  padding: 1px 6px;
-  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
 }
 
-.version-badge-3 {
-  color: #f9c74f;
-  background: rgba(249, 199, 79, 0.12);
+.version-badge--3 {
+  color: #e8c55a;
+  background: rgba(232, 197, 90, 0.1);
+  border: 1px solid rgba(232, 197, 90, 0.25);
 }
 
-.version-badge-4 {
-  color: #4fc3f7;
-  background: rgba(79, 195, 247, 0.12);
+.version-badge--4 {
+  color: var(--info);
+  background: rgba(91, 150, 212, 0.1);
+  border: 1px solid rgba(91, 150, 212, 0.25);
 }
 </style>

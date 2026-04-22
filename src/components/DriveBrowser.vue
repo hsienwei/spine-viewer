@@ -178,7 +178,8 @@ function fileIcon(name: string) {
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -186,14 +187,15 @@ function fileIcon(name: string) {
 }
 
 .modal {
-  background: #1e1e1e;
-  border: 1px solid #333;
-  border-radius: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   width: 560px;
   max-height: 78vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(201, 141, 42, 0.06);
 }
 
 .modal-header {
@@ -201,30 +203,38 @@ function fileIcon(name: string) {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--border);
 }
 
 .modal-title {
-  font-size: 15px;
+  font-family: var(--font-ui);
+  font-size: 13px;
   font-weight: 600;
-  color: #eee;
+  letter-spacing: 0.06em;
+  color: var(--text-primary);
 }
 
 .close-btn {
   background: none;
-  border: none;
-  color: #888;
-  font-size: 16px;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: 14px;
   cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition), background var(--transition), border-color var(--transition);
+  line-height: 1;
 }
 
-.close-btn:hover { color: #eee; background: #2a2a2a; }
+.close-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-raised);
+  border-color: var(--border);
+}
 
 .tabs {
   display: flex;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--border);
 }
 
 .tab {
@@ -233,15 +243,23 @@ function fileIcon(name: string) {
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
-  color: #888;
-  font-size: 13px;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: color var(--transition), border-color var(--transition);
 }
 
 .tab.active {
-  color: #4a9eff;
-  border-bottom-color: #4a9eff;
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.tab:not(.active):hover {
+  color: var(--text-secondary);
 }
 
 .breadcrumb {
@@ -249,31 +267,33 @@ function fileIcon(name: string) {
   align-items: center;
   flex-wrap: wrap;
   gap: 2px;
-  padding: 8px 12px;
-  min-height: 36px;
-  border-bottom: 1px solid #2a2a2a;
+  padding: 7px 12px;
+  min-height: 34px;
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .crumb {
   background: none;
   border: none;
-  color: #4a9eff;
-  font-size: 12px;
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: 11px;
   cursor: pointer;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition);
 }
 
-.crumb:not(.last):hover { background: #2a2a2a; }
+.crumb:not(.last):hover { background: var(--bg-raised); }
 
 .crumb:not(.last)::after {
   content: '›';
-  color: #555;
+  color: var(--text-muted);
   margin-left: 6px;
 }
 
 .crumb.last {
-  color: #ccc;
+  color: var(--text-secondary);
   cursor: default;
   pointer-events: none;
 }
@@ -281,56 +301,68 @@ function fileIcon(name: string) {
 .file-list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
+
+.file-list::-webkit-scrollbar { width: 4px; }
+.file-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 .status {
   text-align: center;
-  color: #666;
+  color: var(--text-muted);
   padding: 40px;
-  font-size: 13px;
+  font-family: var(--font-ui);
+  font-size: 12px;
 }
 
-.status.error { color: #f4845f; }
+.status.error { color: var(--danger); }
 
 .file-row {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 7px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background var(--transition);
   user-select: none;
 }
 
-.file-row:hover { background: #2a2a2a; }
-.file-row.is-selected { background: rgba(74, 158, 255, 0.12); }
+.file-row:hover { background: var(--bg-raised); }
+
+.file-row.is-selected {
+  background: var(--accent-dim);
+  border-left: 2px solid var(--accent);
+  padding-left: 8px;
+}
 
 .file-icon {
-  font-size: 14px;
-  width: 22px;
+  font-size: 13px;
+  width: 20px;
   text-align: center;
   flex-shrink: 0;
 }
 
 .file-name {
   flex: 1;
-  font-size: 13px;
-  color: #aaa;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.file-row.is-folder .file-name { color: #eee; }
-.file-row.is-spine .file-name { color: #ddd; }
+.file-row.is-folder .file-name { color: var(--text-primary); }
+.file-row.is-spine .file-name { color: var(--text-primary); }
 
 .file-check {
   flex-shrink: 0;
-  accent-color: #4a9eff;
-  width: 15px;
-  height: 15px;
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
   cursor: pointer;
 }
 
@@ -339,30 +371,39 @@ function fileIcon(name: string) {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--border);
 }
 
 .select-count {
-  font-size: 12px;
-  color: #888;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .btn-confirm {
   padding: 8px 20px;
-  background: #4a9eff;
-  border: none;
-  border-radius: 6px;
-  color: white;
-  font-size: 13px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  color: #0c0b0a;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--transition), box-shadow var(--transition);
 }
 
-.btn-confirm:hover:not(:disabled) { background: #3a8eef; }
+.btn-confirm:hover:not(:disabled) {
+  background: #dba040;
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
 
 .btn-confirm:disabled {
-  background: #2a2a2a;
-  color: #555;
+  background: var(--bg-raised);
+  border-color: var(--border);
+  color: var(--text-muted);
   cursor: not-allowed;
 }
 </style>
