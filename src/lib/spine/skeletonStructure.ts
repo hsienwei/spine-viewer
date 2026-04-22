@@ -14,6 +14,7 @@ export interface SpineBoneNode {
 export interface SpineSkeletonStructure {
   bones: SpineBoneNode[]
   slots: SpineSlotNode[]
+  totalBones: number
 }
 
 export interface SpineSelectionState {
@@ -77,6 +78,7 @@ export const buildSkeletonStructure = (
 
   return {
     bones: rootBones,
-    slots
+    slots,
+    totalBones: rawBones.length
   }
 }

@@ -77,10 +77,6 @@
           <span class="info-value">{{ currentAnimation || '—' }}</span>
         </div>
         <div class="info-row">
-          <span class="info-label">Time</span>
-          <span class="info-value mono">{{ formatTime(currentTime || 0) }}</span>
-        </div>
-        <div class="info-row">
           <span class="info-label">Draw Calls</span>
           <span class="info-value mono">{{ drawCall || 0 }}</span>
         </div>
@@ -88,7 +84,7 @@
     </section>
 
     <!-- Render Options -->
-    <section class="section">
+    <section v-if="runtimeVersion !== null" class="section">
       <h3 class="section-title">Render</h3>
       <label class="toggle-row">
         <span class="toggle-label-text">Premultiplied Alpha</span>
@@ -556,6 +552,12 @@ const formatTime = (seconds: number): string => {
   color: #e8c55a;
   background: rgba(232, 197, 90, 0.1);
   border: 1px solid rgba(232, 197, 90, 0.25);
+}
+
+:root[data-theme="light"] .version-badge--3 {
+  color: #8a6200;
+  background: rgba(138, 98, 0, 0.1);
+  border: 1px solid rgba(138, 98, 0, 0.3);
 }
 
 .version-badge--4 {

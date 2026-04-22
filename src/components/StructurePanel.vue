@@ -24,7 +24,7 @@
       <h3 class="section-title">
         Hierarchy
         <span class="hierarchy-counts">
-          {{ structure.bones.length }} bones · {{ structure.slots.length }} slots
+          {{ structure.totalBones }} bones · {{ structure.slots.length }} slots
         </span>
       </h3>
       <SkeletonTree
