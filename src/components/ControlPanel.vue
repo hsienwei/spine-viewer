@@ -87,6 +87,20 @@
     <section v-if="runtimeVersion !== null" class="section">
       <h3 class="section-title">Render</h3>
       <label class="toggle-row">
+        <span class="toggle-label-text">XY Axes</span>
+        <span class="toggle-switch">
+          <input
+            type="checkbox"
+            class="toggle-input"
+            :checked="props.showAxes !== false"
+            @change="emit('show-axes-change', ($event.target as HTMLInputElement).checked)"
+          />
+          <span class="toggle-track">
+            <span class="toggle-thumb"></span>
+          </span>
+        </span>
+      </label>
+      <label class="toggle-row">
         <span class="toggle-label-text">Premultiplied Alpha</span>
         <span class="toggle-switch">
           <input
@@ -111,6 +125,10 @@
       <div class="version-row">
         <span class="version-label">Runtime</span>
         <span class="version-badge" :class="`version-badge--${runtimeVersion}`">v{{ runtimeVersion }}.x</span>
+      </div>
+      <div v-if="fallbackStatusLabel" class="version-row">
+        <span class="version-label">Fallback</span>
+        <span class="version-value">{{ fallbackStatusLabel }}</span>
       </div>
     </div>
 
@@ -142,12 +160,16 @@ const props = defineProps<{
   drawCall?: number
   detectedVersion?: SpineDetectedVersion | null
   runtimeVersion?: SpineMajorVersion | null
+  initialRuntimeVersion?: SpineMajorVersion | null
+  fallbackUsed?: boolean
+  showAxes?: boolean
   premultipliedAlpha?: boolean
 }>()
 
 const emit = defineEmits<{
   'file-selected': [payload: { files: File[] }]
   'animation-change': [name: string]
+  'show-axes-change': [value: boolean]
   'premultiply-alpha-change': [value: boolean]
 }>()
 
@@ -219,6 +241,14 @@ const detectedVersionLabel = computed(() => {
   if (props.detectedVersion === 3) return '3.x'
   if (props.detectedVersion === 4) return '4.x'
   return 'unknown'
+})
+
+const fallbackStatusLabel = computed(() => {
+  if (!props.fallbackUsed) return ''
+  if (props.initialRuntimeVersion && props.runtimeVersion && props.initialRuntimeVersion !== props.runtimeVersion) {
+    return `v${props.initialRuntimeVersion}.x -> v${props.runtimeVersion}.x`
+  }
+  return 'used'
 })
 
 const formatTime = (seconds: number): string => {

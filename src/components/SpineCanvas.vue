@@ -44,6 +44,7 @@ const props = defineProps<{
   animationName?: string
   isPlaying?: boolean
   playbackRate?: number
+  showAxes?: boolean
   showBones?: boolean
   showSlots?: boolean
   selection?: SpineSelectionState
@@ -58,7 +59,9 @@ const emit = defineEmits<{
     duration: number
     structure: SpineSkeletonStructure
     detectedVersion: SpineDetectedVersion
+    initialRuntimeVersion: SpineMajorVersion
     runtimeVersion: SpineMajorVersion
+    fallbackUsed: boolean
   }): void
   (e: 'error', error: string): void
   (e: 'timeUpdate', currentTime: number, duration: number, drawCall: number): void
@@ -84,6 +87,33 @@ const runtimeAdapters = {
   3: new Spine3RuntimeAdapter(),
   4: new Spine4RuntimeAdapter()
 } as const
+
+interface LoadAttemptFailure {
+  version: SpineMajorVersion
+  message: string
+}
+
+const parseDebugRuntime = (value: string | null): SpineMajorVersion | null => {
+  if (value === '3') return 3
+  if (value === '4') return 4
+  return null
+}
+
+const getDebugRuntimeOverrides = () => {
+  if (!import.meta.env.DEV || typeof window === 'undefined') {
+    return {
+      primaryRuntime: null as SpineMajorVersion | null,
+      failRuntime: null as SpineMajorVersion | null
+    }
+  }
+
+  const params = new URLSearchParams(window.location.search)
+  return {
+    primaryRuntime: parseDebugRuntime(params.get('debugPrimaryRuntime')),
+    failRuntime: parseDebugRuntime(params.get('debugFailRuntime'))
+  }
+}
+
 const hasValidBounds = computed(() => currentBounds.value.width > 0 && currentBounds.value.height > 0)
 const showViewportOverlay = computed(() => {
   return isViewerReady.value && hasValidBounds.value && !loading.value && !errorMsg.value
@@ -115,6 +145,7 @@ const syncSessionState = () => {
 
   activeSession.setPlayback(props.isPlaying !== false, props.playbackRate || 1)
   activeSession.setDebugOptions({
+    showAxes: props.showAxes !== false,
     showBones: !!props.showBones,
     showSlots: !!props.showSlots
   })
@@ -170,45 +201,81 @@ const loadSpine = async () => {
     const detection = await detectSpineVersion(props.files, 'auto')
     if (requestId !== loadRequestId) return
 
-    const adapter = runtimeAdapters[detection.selectedVersion]
-    const session = await adapter.createSession({
-      canvas: canvasRef.value,
-      sourceFiles: detection.sourceFiles,
-      animationName: props.animationName,
-      premultipliedAlpha: props.premultipliedAlpha ?? true,
-      onLoaded: (data) => {
-        if (requestId !== loadRequestId) return
-        isViewerReady.value = true
-        loading.value = false
-        emit('loaded', {
-          ...data,
-          detectedVersion: detection.detectedVersion,
-          runtimeVersion: detection.selectedVersion
-        })
-      },
-      onError: (message) => {
-        if (requestId !== loadRequestId) return
-        setLoadError(message)
-      },
-      onTimeUpdate: (time, duration, drawCall) => {
-        if (requestId !== loadRequestId) return
-        emit('timeUpdate', time, duration, drawCall)
-      },
-      onViewState: (state) => {
-        if (requestId !== loadRequestId) return
-        currentBounds.value = state.bounds
-        panOffset.value = state.panOffset
-        viewScale.value = state.viewScale
-      }
-    })
+    const debugRuntime = getDebugRuntimeOverrides()
+    const primaryVersion = debugRuntime.primaryRuntime ?? detection.selectedVersion
+    const fallbackVersions = debugRuntime.primaryRuntime && debugRuntime.primaryRuntime !== detection.selectedVersion
+      ? [detection.selectedVersion, ...detection.fallbackCandidates]
+      : detection.fallbackCandidates
+    const candidateVersions = [primaryVersion, ...fallbackVersions]
+      .filter((version, index, arr) => arr.indexOf(version) === index)
+    const failures: LoadAttemptFailure[] = []
 
-    if (requestId !== loadRequestId) {
-      session.dispose()
-      return
+    for (const version of candidateVersions) {
+      let attemptError = ''
+      let loaded = false
+
+      try {
+        if (debugRuntime.failRuntime === version) {
+          throw new Error(`[DEV] Forced Spine ${version}.x failure for fallback testing`)
+        }
+
+        const session = await runtimeAdapters[version].createSession({
+          canvas: canvasRef.value,
+          sourceFiles: detection.sourceFiles,
+          animationName: props.animationName,
+          premultipliedAlpha: props.premultipliedAlpha ?? true,
+          onLoaded: (data) => {
+            if (requestId !== loadRequestId) return
+            loaded = true
+            isViewerReady.value = true
+            loading.value = false
+            emit('loaded', {
+              ...data,
+              detectedVersion: detection.detectedVersion,
+              initialRuntimeVersion: primaryVersion,
+              runtimeVersion: version,
+              fallbackUsed: version !== primaryVersion
+            })
+          },
+          onError: (message) => {
+            attemptError = message
+          },
+          onTimeUpdate: (time, duration, drawCall) => {
+            if (requestId !== loadRequestId) return
+            emit('timeUpdate', time, duration, drawCall)
+          },
+          onViewState: (state) => {
+            if (requestId !== loadRequestId) return
+            currentBounds.value = state.bounds
+            panOffset.value = state.panOffset
+            viewScale.value = state.viewScale
+          }
+        })
+
+        if (requestId !== loadRequestId) {
+          session.dispose()
+          return
+        }
+
+        activeSession = session
+        syncSessionState()
+        return
+      } catch (error) {
+        if (requestId !== loadRequestId) return
+
+        const message = attemptError || (error instanceof Error ? error.message : `Failed to initialize Spine ${version}.x runtime`)
+        failures.push({ version, message })
+
+        if (loaded) {
+          return
+        }
+      }
     }
 
-    activeSession = session
-    syncSessionState()
+    const finalMessage = failures.length > 0
+      ? failures.map(({ version, message }) => `Spine ${version}.x: ${message}`).join('\n')
+      : 'Failed to load'
+    setLoadError(finalMessage)
   } catch (e) {
     if (requestId === loadRequestId) {
       setLoadError(e instanceof Error ? e.message : 'Failed to load')
@@ -241,8 +308,9 @@ watch(() => props.premultipliedAlpha, (value) => {
   activeSession?.setPremultipliedAlpha(value ?? true)
 })
 
-watch([() => props.showBones, () => props.showSlots], () => {
+watch([() => props.showAxes, () => props.showBones, () => props.showSlots], () => {
   activeSession?.setDebugOptions({
+    showAxes: props.showAxes !== false,
     showBones: !!props.showBones,
     showSlots: !!props.showSlots
   })

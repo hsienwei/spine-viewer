@@ -35,6 +35,7 @@
           <ControlPanel
             @file-selected="handleFileSelected"
             @animation-change="handleAnimationChange"
+            @show-axes-change="handleShowAxesChange"
             @premultiply-alpha-change="handlePremultipliedAlphaChange"
             :animations="animations"
             :current-animation="animationName"
@@ -43,6 +44,9 @@
             :draw-call="drawCall"
             :detected-version="detectedVersion"
             :runtime-version="runtimeVersion"
+            :initial-runtime-version="initialRuntimeVersion"
+            :fallback-used="fallbackUsed"
+            :show-axes="showAxes"
             :premultiplied-alpha="premultipliedAlpha"
           />
         </div>
@@ -81,6 +85,7 @@
         :animation-name="animationName"
         :is-playing="isPlaying"
         :playback-rate="playbackRate"
+        :show-axes="showAxes"
         :show-bones="showBones"
         :show-slots="showSlots"
         :selection="selection"
@@ -119,6 +124,7 @@ const sourceFiles = ref<File[]>([])
 const animationName = ref('')
 const isPlaying = ref(true)
 const playbackRate = ref(1)
+const showAxes = ref(true)
 const showBones = ref(false)
 const showSlots = ref(false)
 const premultipliedAlpha = ref(true)
@@ -134,6 +140,8 @@ const duration = ref(0)
 const drawCall = ref(0)
 const detectedVersion = ref<SpineDetectedVersion | null>(null)
 const runtimeVersion = ref<SpineMajorVersion | null>(null)
+const initialRuntimeVersion = ref<SpineMajorVersion | null>(null)
+const fallbackUsed = ref(false)
 
 const hasStructurePanel = computed(() => structure.value.bones.length > 0)
 
@@ -164,6 +172,8 @@ const handleFileSelected = (payload: { files: File[] }) => {
   sourceFiles.value = payload.files
   detectedVersion.value = null
   runtimeVersion.value = null
+  initialRuntimeVersion.value = null
+  fallbackUsed.value = false
 }
 
 const handleAnimationChange = (name: string) => {
@@ -185,6 +195,10 @@ const handleSeek = (time: number) => {
 
 const handleShowBonesChange = (value: boolean) => {
   showBones.value = value
+}
+
+const handleShowAxesChange = (value: boolean) => {
+  showAxes.value = value
 }
 
 const handleShowSlotsChange = (value: boolean) => {
@@ -216,7 +230,9 @@ const handleLoaded = (data: {
   duration: number
   structure: SpineSkeletonStructure
   detectedVersion: SpineDetectedVersion
+  initialRuntimeVersion: SpineMajorVersion
   runtimeVersion: SpineMajorVersion
+  fallbackUsed: boolean
 }) => {
   animations.value = data.animations
   structure.value = data.structure
@@ -228,7 +244,9 @@ const handleLoaded = (data: {
   drawCall.value = data.drawCall
   currentTime.value = 0
   detectedVersion.value = data.detectedVersion
+  initialRuntimeVersion.value = data.initialRuntimeVersion
   runtimeVersion.value = data.runtimeVersion
+  fallbackUsed.value = data.fallbackUsed
 }
 
 const handleTimeUpdate = (time: number, animDuration: number, frameDrawCall: number) => {

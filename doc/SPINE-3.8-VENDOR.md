@@ -6,25 +6,25 @@ Support Spine 3.8 assets in this viewer by vendoring a real Spine 3.8 WebGL runt
 
 This project already supports Spine 4.x through the official `@esotericsoftware/spine-webgl` package. The 3.8 path is different:
 
-- the 3.8 runtime must be supplied manually under `vendor/`
+- the 3.8 runtime must be supplied manually under `public/vendor/`
 - the app loads it through `src/lib/spine/loaders/loadSpine3Runtime.ts`
 - `src/lib/spine/adapters/spine3Adapter.ts` validates the runtime surface before session creation
 
 ## Current State
 
-The 3.8 integration is only partially scaffolded today.
+The 3.8 integration is usable, but still depends on a manually vendored 3.8 runtime bundle.
 
-- `vendor/spine-3.8/dist/spine-webgl-3.8.js` is expected by the loader
-- `loadSpine3Runtime.ts` uses dynamic `import()` to load that file
-- `Spine3RuntimeAdapter` currently validates exports, then stops with a "session initialization is not implemented yet" error
-- no real Spine 3.8 rendering session exists yet
+- `public/vendor/spine-3.8/dist/spine-webgl-3.8.js` is expected by the loader
+- `loadSpine3Runtime.ts` loads that file by public URL using browser dynamic `import()`
+- `Spine3RuntimeAdapter` validates exports and creates a real 3.8 rendering session
+- `SpineCanvas.vue` now supports auto fallback between the selected runtime and fallback candidates
 
-This means the next real milestone is not "add a loader", but "replace the placeholder bundle with a real 3.8 build and finish the adapter implementation".
+This means the remaining work is around validation, compatibility hardening, and documentation rather than basic 3.8 session support.
 
 ## Required Repository Layout
 
 ```text
-vendor/
+public/vendor/
   spine-3.8/
     README.md
     dist/
@@ -70,11 +70,12 @@ Reasoning:
 - this avoids requiring a global `window` namespace
 - it keeps the 3.8 path closer to how the 4.x runtime is consumed
 
-The current loader expects:
+The current loader expects a public asset at:
 
 ```ts
-const SPINE3_VENDOR_IMPORT_PATH = '../../../../vendor/spine-3.8/dist/spine-webgl-3.8.js'
-export const loadSpine3Runtime = async () => import(SPINE3_VENDOR_IMPORT_PATH)
+const SPINE3_VENDOR_RUNTIME_PATH = 'vendor/spine-3.8/dist/spine-webgl-3.8.js'
+const runtimeUrl = new URL(SPINE3_VENDOR_RUNTIME_PATH, window.location.origin + import.meta.env.BASE_URL).toString()
+export const loadSpine3Runtime = async () => import(/* @vite-ignore */ runtimeUrl)
 ```
 
 If ESM is not practical, a fallback global bundle is acceptable, but the loader and adapter must then be updated to resolve the runtime from a known global object.
@@ -109,7 +110,7 @@ The loader file already exists:
 
 Expected behavior:
 
-1. dynamically import `vendor/spine-3.8/dist/spine-webgl-3.8.js`
+1. dynamically import `public/vendor/spine-3.8/dist/spine-webgl-3.8.js` through its public URL
 2. return the ESM module object when the bundle is ESM
 3. if the bundle exports through `default`, let the adapter unwrap it
 4. if a global bundle is used later, update the loader so it loads the script and returns the global runtime namespace
@@ -170,6 +171,29 @@ After replacing the placeholder bundle and implementing the 3.8 adapter path, ma
 - reload a 3.8 asset after previously loading a 4.x asset
 - reload a 4.x asset after previously loading a 3.8 asset
 - verify that error messages clearly distinguish missing vendor bundle, invalid exports, and session initialization failures
+
+## Development Fallback Testing
+
+When you do not have a real "primary runtime fails, fallback runtime succeeds" asset set, use the dev-only query parameters below in `npm run dev`:
+
+- `?debugPrimaryRuntime=3`
+  - forces the first attempt to use Spine 3.x
+  - useful for testing `4.x -> fallback to 4.x runtime after 3.x failure` with an otherwise normal 4.x asset
+- `?debugPrimaryRuntime=4`
+  - forces the first attempt to use Spine 4.x
+  - useful for testing `3.x -> fallback to 3.x runtime after 4.x failure` with an otherwise normal 3.x asset
+- `?debugFailRuntime=3`
+  - forces the 3.x attempt to fail immediately
+- `?debugFailRuntime=4`
+  - forces the 4.x attempt to fail immediately
+
+Example:
+
+```text
+http://localhost:5173/?debugPrimaryRuntime=3
+```
+
+With a normal Spine 4.x asset, the viewer should first try 3.x, fail, then auto fallback to 4.x. The left sidebar version section should show `Fallback v3.x -> v4.x`.
 
 ## Short-Term Implementation Order
 
