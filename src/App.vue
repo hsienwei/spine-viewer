@@ -119,7 +119,7 @@ const isControlPanelOpen = ref(true)
 const isStructurePanelOpen = ref(true)
 
 const animations = ref<string[]>([])
-const structure = ref<SpineSkeletonStructure>({ bones: [], slots: [] })
+const structure = ref<SpineSkeletonStructure>({ bones: [], slots: [], totalBones: 0 })
 const selection = ref<SpineSelectionState>({ boneName: null, slotName: null })
 const currentTime = ref(0)
 const duration = ref(0)
