@@ -1,5 +1,6 @@
 import { createSpineResolvedResources } from '../fileResources'
 import { buildSkeletonStructure } from '../skeletonStructure'
+import { createAxisOverlay } from './axisOverlay'
 import type { SpineDebugOptions, SpineRuntimeAdapter, SpineRuntimeSession, SpineSessionCreateInput } from './types'
 
 let spine4ModulePromise: Promise<any> | null = null
@@ -54,7 +55,7 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
       let animationState: any = null
       let viewScale = 1
       let panOffset = { x: 0, y: 0 }
-      let currentDebugOptions: SpineDebugOptions = { showBones: false, showSlots: false }
+      let currentDebugOptions: SpineDebugOptions = { showAxes: true, showBones: false, showSlots: false }
       let currentSelection = { boneName: null as string | null, slotName: null as string | null }
       let playbackEnabled = true
       let playbackRate = 1
@@ -305,6 +306,9 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
           sc.renderer.skeletonDebugRenderer.drawClipping = false
           sc.renderer.drawSkeletonDebug(skeleton, premultipliedAlpha)
         }
+        if (currentDebugOptions.showAxes) {
+          drawWorldAxes(sc)
+        }
         drawSelectionHighlight(sc)
         const frameDrawCall = sc.renderer.batcher.getDrawCalls()
         sc.renderer.end()
@@ -358,6 +362,49 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
             secondaryColor
           )
         }
+      }
+
+      const drawWorldAxes = (sc: any) => {
+        const camera = sc?.renderer?.camera
+        if (!camera || !spine?.Vector3) return
+
+        const overlay = createAxisOverlay({
+          canvasWidth: input.canvas.width,
+          canvasHeight: input.canvas.height,
+          screenToWorld: (x, y) => {
+            const point = camera.screenToWorld(
+              new spine.Vector3(x, y, 0),
+              input.canvas.width,
+              input.canvas.height
+            )
+
+            return point ? { x: point.x, y: point.y } : null
+          }
+        })
+
+        if (!overlay) return
+
+        const xAxisColor = new spine.Color(0.92, 0.36, 0.36, 0.9)
+        const yAxisColor = new spine.Color(0.3, 0.86, 0.58, 0.9)
+        const originColor = new spine.Color(0.95, 0.95, 0.95, 0.95)
+
+        sc.renderer.line(
+          overlay.xAxis.x1,
+          overlay.xAxis.y1,
+          overlay.xAxis.x2,
+          overlay.xAxis.y2,
+          xAxisColor,
+          xAxisColor
+        )
+        sc.renderer.line(
+          overlay.yAxis.x1,
+          overlay.yAxis.y1,
+          overlay.yAxis.x2,
+          overlay.yAxis.y2,
+          yAxisColor,
+          yAxisColor
+        )
+        sc.renderer.circle(true, 0, 0, 3.5, originColor, 18)
       }
 
       try {

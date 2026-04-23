@@ -23,6 +23,7 @@ export interface SpineSessionCreateInput {
 }
 
 export interface SpineDebugOptions {
+  showAxes: boolean
   showBones: boolean
   showSlots: boolean
 }
