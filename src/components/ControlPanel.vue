@@ -41,14 +41,54 @@
         </div>
       </div>
 
-      <div v-if="selectedFiles.length > 0 && missingFiles.length > 0" class="missing-hint">
-        Missing: {{ missingFiles.join(', ') }}
+      <div v-if="isAnalyzingFiles" class="status-hint">
+        Analyzing file groups...
+      </div>
+
+      <section v-if="assetGroups.length > 0" class="subsection">
+        <h4 class="subsection-title">Detected Sets</h4>
+        <div class="group-list">
+          <label
+            v-for="group in assetGroups"
+            :key="group.id"
+            class="group-card"
+            :class="{ selected: selectedGroupId === group.id, disabled: !group.isLoadable }"
+          >
+            <input
+              v-model="selectedGroupId"
+              class="group-radio"
+              type="radio"
+              name="asset-group"
+              :value="group.id"
+            />
+            <div class="group-copy">
+              <div class="group-header">
+                <span class="group-title">{{ group.label }}</span>
+                <span class="group-status" :class="{ ready: group.isLoadable, invalid: !group.isLoadable }">
+                  {{ group.isLoadable ? 'Ready' : 'Needs Fix' }}
+                </span>
+              </div>
+              <div class="group-meta">
+                <span>{{ group.skeletonFile.name }}</span>
+                <span>{{ group.atlasFile?.name || 'No atlas' }}</span>
+                <span>{{ group.textureFiles.length }} textures</span>
+              </div>
+              <div v-if="group.issues.length > 0" class="group-issues">
+                {{ group.issues.join(' · ') }}
+              </div>
+            </div>
+          </label>
+        </div>
+      </section>
+
+      <div v-if="analysisIssues.length > 0" class="missing-hint">
+        <div v-for="issue in analysisIssues" :key="issue">{{ issue }}</div>
       </div>
 
       <button
         v-if="selectedFiles.length > 0"
         class="btn btn-accent"
-        :disabled="!canLoad"
+        :disabled="isAnalyzingFiles || !canLoad"
         @click="loadFiles"
       >
         Load Animation
@@ -143,7 +183,12 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { SpineDetectedVersion, SpineMajorVersion } from '../lib/spine/versionDetection'
+import {
+  analyzeSpineFiles,
+  type SpineDetectedVersion,
+  type SpineFileGroupCandidate,
+  type SpineMajorVersion
+} from '../lib/spine/versionDetection'
 import DriveBrowser from './DriveBrowser.vue'
 
 interface FileData {
@@ -176,24 +221,22 @@ const emit = defineEmits<{
 const showDriveBrowser = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const selectedFiles = ref<FileData[]>([])
+const assetGroups = ref<SpineFileGroupCandidate[]>([])
+const analysisIssues = ref<string[]>([])
+const selectedGroupId = ref('')
+const isAnalyzingFiles = ref(false)
 const localAnimation = ref('')
+let fileAnalysisRequestId = 0
 
 watch(() => props.currentAnimation, (val) => {
   if (val) localAnimation.value = val
 })
 
-const canLoad = computed(() => {
-  const hasSkeleton = selectedFiles.value.some(f => f.type === 'skeleton')
-  const hasAtlas = selectedFiles.value.some(f => f.type === 'atlas')
-  return hasSkeleton && hasAtlas
+const selectedGroup = computed(() => {
+  return assetGroups.value.find(group => group.id === selectedGroupId.value) || null
 })
 
-const missingFiles = computed(() => {
-  const missing: string[] = []
-  if (!selectedFiles.value.some(f => f.type === 'skeleton')) missing.push('.json')
-  if (!selectedFiles.value.some(f => f.type === 'atlas')) missing.push('.atlas')
-  return missing
-})
+const canLoad = computed(() => !!selectedGroup.value?.isLoadable)
 
 const triggerFileInput = () => {
   fileInputRef.value?.click()
@@ -210,7 +253,7 @@ const handleFileSelect = (event: Event) => {
   }
 }
 
-const processFiles = (files: File[]) => {
+const processFiles = async (files: File[]) => {
   selectedFiles.value = files.map(file => {
     const ext = file.name.split('.').pop()?.toLowerCase()
     let type: 'skeleton' | 'atlas' | 'texture' = 'texture'
@@ -218,11 +261,39 @@ const processFiles = (files: File[]) => {
     else if (ext === 'atlas') type = 'atlas'
     return { name: file.name, file, type }
   })
+
+  const requestId = ++fileAnalysisRequestId
+  isAnalyzingFiles.value = true
+  assetGroups.value = []
+  analysisIssues.value = []
+  selectedGroupId.value = ''
+
+  try {
+    const analysis = await analyzeSpineFiles(files)
+    if (requestId !== fileAnalysisRequestId) return
+
+    assetGroups.value = analysis.groups
+    analysisIssues.value = analysis.generalIssues
+    selectedGroupId.value = analysis.groups.find(group => group.isLoadable)?.id || analysis.groups[0]?.id || ''
+  } catch (error) {
+    if (requestId !== fileAnalysisRequestId) return
+    analysisIssues.value = [error instanceof Error ? error.message : 'Failed to analyze selected files']
+  } finally {
+    if (requestId === fileAnalysisRequestId) {
+      isAnalyzingFiles.value = false
+    }
+  }
 }
 
 const loadFiles = () => {
-  if (canLoad.value) {
-    emit('file-selected', { files: selectedFiles.value.map(f => f.file) })
+  if (selectedGroup.value?.sourceFiles && selectedGroup.value.isLoadable) {
+    emit('file-selected', {
+      files: [
+        selectedGroup.value.sourceFiles.skeletonFile,
+        selectedGroup.value.sourceFiles.atlasFile,
+        ...selectedGroup.value.sourceFiles.textureFiles
+      ]
+    })
   }
 }
 
@@ -250,13 +321,6 @@ const fallbackStatusLabel = computed(() => {
   }
   return 'used'
 })
-
-const formatTime = (seconds: number): string => {
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  const ms = Math.floor((seconds % 1) * 100)
-  return `${mins}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`
-}
 </script>
 
 <style scoped>
@@ -403,6 +467,124 @@ const formatTime = (seconds: number): string => {
   background: rgba(196, 107, 90, 0.08);
   border-radius: var(--radius-sm);
   border: 1px solid rgba(196, 107, 90, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.status-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 6px 8px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-muted);
+}
+
+.subsection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.subsection-title {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.group-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), box-shadow var(--transition);
+}
+
+.group-card:hover {
+  border-color: var(--border-glow);
+}
+
+.group-card.selected {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  box-shadow: 0 0 0 1px rgba(201, 141, 42, 0.12);
+}
+
+.group-card.disabled {
+  opacity: 0.82;
+}
+
+.group-radio {
+  margin-top: 2px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+.group-copy {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.group-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-status {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.group-status.ready {
+  color: var(--success);
+}
+
+.group-status.invalid {
+  color: var(--danger);
+}
+
+.group-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.group-issues {
+  font-size: 11px;
+  color: var(--danger);
+  line-height: 1.4;
 }
 
 /* Custom Select */
