@@ -2,8 +2,13 @@
   <div class="spine-viewer">
     <aside class="sidebar">
       <div class="sidebar-brand">
-        <span class="brand-spine">SPINE</span>
-        <span class="brand-viewer">VIEWER</span>
+        <div class="sidebar-brand-copy">
+          <div class="brand-title">
+            <span class="brand-spine">SPINE</span>
+            <span class="brand-viewer">VIEWER</span>
+          </div>
+          <span class="brand-version">v{{ appVersion }}</span>
+        </div>
         <button class="theme-toggle" @click="toggleTheme" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <svg v-if="isDark" width="14" height="14" viewBox="0 0 14 14" fill="none">
             <circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.4"/>
@@ -100,12 +105,15 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import packageJson from '../package.json'
 import ControlPanel from './components/ControlPanel.vue'
 import PlaybackOverlay from './components/PlaybackOverlay.vue'
 import SpineCanvas from './components/SpineCanvas.vue'
 import StructurePanel from './components/StructurePanel.vue'
 import type { SpineSelectionState, SpineSkeletonStructure } from './lib/spine/skeletonStructure'
 import type { SpineDetectedVersion, SpineMajorVersion } from './lib/spine/versionDetection'
+
+const appVersion = packageJson.version
 
 const sourceFiles = ref<File[]>([])
 const animationName = ref('')
@@ -321,11 +329,22 @@ html, body, #app {
 
 .sidebar-brand {
   display: flex;
-  align-items: baseline;
-  gap: 7px;
+  align-items: center;
+  gap: 10px;
   padding: 18px 16px 14px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+}
+
+.sidebar-brand-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.brand-title {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
 }
 
 .brand-spine {
@@ -343,7 +362,15 @@ html, body, #app {
   letter-spacing: 0.28em;
   color: var(--text-muted);
   text-transform: uppercase;
-  flex: 1;
+}
+
+.brand-version {
+  display: inline-block;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
 }
 
 .theme-toggle {
