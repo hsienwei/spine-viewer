@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spine Viewer 隱私權政策 / Privacy Policy</title>
+    <meta
+      name="description"
+      content="Spine Viewer 隱私權政策 / Privacy Policy，說明 Google Drive 權限、資料存取、用途、安全、保留與刪除方式。"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0c0b0a;
+        --panel: rgba(19, 17, 16, 0.92);
+        --surface: #1c1917;
+        --border: rgba(201, 141, 42, 0.18);
+        --text: #f5ede0;
+        --muted: #c2ae98;
+        --accent: #c98d2a;
+        --accent-soft: rgba(201, 141, 42, 0.12);
+        --max-width: 980px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: 'Noto Sans TC', 'Segoe UI', sans-serif;
+        background:
+          radial-gradient(circle at top, rgba(201, 141, 42, 0.18), transparent 30%),
+          linear-gradient(180deg, #15120f 0%, #0c0b0a 100%);
+        color: var(--text);
+        line-height: 1.7;
+      }
+
+      main {
+        width: min(calc(100% - 32px), var(--max-width));
+        margin: 48px auto;
+        padding: 0 0 32px;
+      }
+
+      .hero,
+      .section {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        backdrop-filter: blur(14px);
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+      }
+
+      .hero {
+        padding: 32px;
+        margin-bottom: 20px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+
+      h1 {
+        margin-top: 16px;
+        font-size: clamp(30px, 5vw, 48px);
+      }
+
+      h2 {
+        font-size: 22px;
+        margin-bottom: 18px;
+      }
+
+      h3 {
+        font-size: 18px;
+        color: var(--text);
+        margin-bottom: 10px;
+      }
+
+      p,
+      li {
+        color: var(--muted);
+        font-size: 16px;
+      }
+
+      .hero p {
+        max-width: 820px;
+        margin: 14px 0 0;
+      }
+
+      .meta {
+        margin-top: 16px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .section {
+        padding: 24px 28px;
+        margin-bottom: 16px;
+      }
+
+      .lang-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .lang-card {
+        padding: 16px;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .lang-label {
+        display: inline-block;
+        margin-bottom: 10px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 22px;
+      }
+
+      a {
+        color: var(--accent);
+      }
+
+      .contact-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .contact {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      @media (max-width: 800px) {
+        .lang-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 640px) {
+        main {
+          width: min(calc(100% - 20px), var(--max-width));
+          margin: 20px auto;
+        }
+
+        .hero,
+        .section {
+          border-radius: 16px;
+        }
+
+        .hero {
+          padding: 24px 20px;
+        }
+
+        .section {
+          padding: 20px;
+        }
+
+        p,
+        li {
+          font-size: 15px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <div class="eyebrow">Privacy Policy</div>
+        <h1>Spine Viewer 隱私權政策 / Privacy Policy</h1>
+        <p>
+          本頁提供 Spine Viewer 的繁體中文與英文版隱私權政策。
+          This page provides the Traditional Chinese and English versions of the Spine Viewer Privacy Policy.
+        </p>
+        <div class="meta">生效日期 / Effective Date: 2026 年 4 月 24 日 / April 24, 2026</div>
+      </section>
+
+      <section class="section">
+        <h2>1. 服務範圍與開發者身分 / Service Scope and Developer Identity</h2>
+        <div class="lang-grid">
+          <div class="lang-card">
+            <div class="lang-label">繁體中文</div>
+            <p>
+              本隱私權政策適用於由 hsienwei 維護的 Spine Viewer 網頁服務。Spine Viewer 是用來載入、檢視與播放 Spine
+              動畫資產的工具，支援本機檔案與 Google Drive 檔案選取。
+            </p>
+          </div>
+          <div class="lang-card">
+            <div class="lang-label">English</div>
+            <p>
+              This Privacy Policy applies to the Spine Viewer web service maintained by hsienwei. Spine Viewer is a tool for loading,
+              previewing, and playing Spine animation assets, and supports both local file loading and Google Drive file selection.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>2. 我們會存取哪些 Google 使用者資料 / Google User Data We Access</h2>
+        <div class="lang-grid">
+          <div class="lang-card">
+            <div class="lang-label">繁體中文</div>
+            <ul>
+              <li>你在 Google Drive 中明確授權並選取的檔案內容，例如 `.json`、`.atlas`、`.png`。</li>
+              <li>為了讓你瀏覽與選取檔案所需的中繼資料，例如檔案名稱、檔案 ID、MIME 類型與資料夾層級。</li>
+              <li>OAuth 授權流程返回的存取權杖，用於向 Google Drive API 發出你當前工作階段需要的請求。</li>
+            </ul>
+          </div>
+          <div class="lang-card">
+            <div class="lang-label">English</div>
+            <ul>
+              <li>Contents of the Google Drive files that you explicitly authorize and select, such as `.json`, `.atlas`, and `.png` files.</li>
+              <li>Metadata required to browse and select files, such as file names, file IDs, MIME types, and folder structure.</li>
+              <li>Access tokens returned by the OAuth flow, used to send requests needed for your current session to the Google Drive API.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>3. 權限範圍 / Scope Requested</h2>
+        <div class="lang-grid">
+          <div class="lang-card">
+            <div class="lang-label">繁體中文</div>
+            <ul>
+              <li>本服務目前請求的 Google Drive 權限為 `https://www.googleapis.com/auth/drive.readonly`。</li>
+              <li>此權限僅用於列出你可存取的檔案與下載你主動選取的檔案，供瀏覽器內預覽與解析。</li>
+              <li>本服務不會建立、修改、刪除、搬移、重新命名或分享你的 Google Drive 檔案。</li>
+            </ul>
+          </div>
+          <div class="lang-card">
+            <div class="lang-label">English</div>
+            <ul>
+              <li>The service currently requests the Google Drive scope `https://www.googleapis.com/auth/drive.readonly`.</li>
+              <li>This scope is used only to list files you can access and download files you explicitly select for in-browser preview and parsing.</li>
+              <li>The service does not create, modify, delete, move, rename, or share your Google Drive files.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>4. 我們如何使用 Google 使用者資料 / How We Use Google User Data</h2>
+        <div class="lang-grid">
+          <div class="lang-card">
+            <div class="lang-label">繁體中文</div>
+            <ul>
+              <li>用於顯示 Google Drive 檔案與資料夾清單，讓你選取要載入的 Spine 資產。</li>
+              <li>用於下載你明確選取的檔案，並在瀏覽器中解析、渲染、播放與檢查 Spine 動畫內容。</li>
+              <li>用於提供與檔案預覽直接相關的使用者功能，不用於廣告、資料經紀、信用評分或其他無關用途。</li>
+            </ul>
+          </div>
+          <div class="lang-card">
+            <div class="lang-label">English</div>
+            <ul>
+              <li>To display Google Drive files and folders so you can choose which Spine assets to load.</li>
+              <li>To download files you explicitly select and parse, render, play, and inspect Spine animation content in the browser.</li>
+              <li>To provide user-facing features directly related to file preview, and not for advertising, data brokerage, credit evaluation, or unrelated purposes.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>5. 資料儲存、保留與刪除 / Storage, Retention, and Deletion</h2>
+        <div class="lang-grid">
+          <div class="lang-card">
+            <div class="lang-label">繁體中文</div>
+            <ul>
+              <li>檔案內容主要在你的瀏覽器工作階段中處理；目前此服務不宣稱將你選取的 Google Drive 檔案內容長期保存到自有後端資料庫。</li>
+              <li>OAuth 存取權杖僅保留於執行中的瀏覽器記憶體，用於當前工作階段的 API 請求。</li>
+              <li>介面偏好與 Google Drive 導覽狀態可能保存在瀏覽器 `localStorage`，例如主題設定與最近的資料夾瀏覽位置。</li>
+              <li>你可以透過清除瀏覽器站點資料、登出 Google 授權或撤銷應用程式授權來移除這些本機資料與後續存取能力。</li>
+            </ul>
+          </div>
+          <div class="lang-card">
+            <div class="lang-label">English</div>
+            <ul>
+              <li>File contents are primarily processed during your browser session; the service does not claim to store selected Google Drive file contents long-term in its own backend database.</li>
+              <li>OAuth access tokens are kept only in active browser memory for API requests during the current session.</li>
+              <li>Interface preferences and Google Drive navigation state may be stored in browser `localStorage`, such as theme settings and the most recent folder path.</li>
+              <li>You can remove this local data and future access capability by clearing site data, signing out of the Google authorization flow, or revoking the app's access.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>6. 資料分享與第三方揭露 / Sharing and Third-Party Disclosure</h2>
+        <div class="lang-grid">
+          <div class="lang-card">
+            <div class="lang-label">繁體中文</div>
+            <ul>
+              <li>除為了完成你要求的 Google Drive API 存取外，本服務不會出售 Google 使用者資料，也不會將其揭露給廣告平台、資料經紀商或資訊轉售方。</li>
+              <li>本服務使用 Google 提供的 OAuth、Google Identity Services、Google Picker 與 Google Drive API；與這些服務互動時，資料會依你授權範圍傳送至 Google。</li>
+              <li>若法律要求、資安事件處理或你明確要求，才可能在必要範圍內處理或揭露相關資料。</li>
+            </ul>
+          </div>
+          <div class="lang-card">
+            <div class="lang-label">English</div>
+            <ul>
+              <li>Other than what is necessary to complete the Google Drive API access you request, the service does not sell Google user data or disclose it to advertising platforms, data brokers, or information resellers.</li>
+              <li>The service uses Google OAuth, Google Identity Services, Google Picker, and the Google Drive API; when interacting with these services, data is transmitted to Google within the scope you authorize.</li>
+              <li>Relevant data may be processed or disclosed only to the extent necessary for legal compliance, security incident handling, or your explicit request.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>7. 資料安全措施 / Security Measures</h2>
+        <div class="lang-grid">
+          <div class="lang-card">
+            <div class="lang-label">繁體中文</div>
+            <ul>
+              <li>本服務透過 HTTPS 與 Google API 通訊，以保護傳輸中的資料。</li>
+              <li>OAuth 權杖不會被故意寫入自有永久資料庫；目前實作以瀏覽器記憶體中的工作階段存取為主。</li>
+              <li>我們會將 Google 使用者資料的使用限制在產品介面中明確可見的使用者功能內。</li>
+            </ul>
+          </div>
+          <div class="lang-card">
+            <div class="lang-label">English</div>
+            <ul>
+              <li>The service communicates with Google APIs over HTTPS to protect data in transit.</li>
+              <li>OAuth tokens are not intentionally written to a permanent first-party database; the current implementation primarily relies on in-memory browser session access.</li>
+              <li>Use of Google user data is limited to user-facing features that are visible within the product interface.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>8. 你的選擇與控制 / Your Choices and Controls</h2>
+        <div class="lang-grid">
+          <div class="lang-card">
+            <div class="lang-label">繁體中文</div>
+            <ul>
+              <li>你可以完全不使用 Google Drive 功能，只使用本機檔案載入 Spine 資產。</li>
+              <li>你可以在 Google 帳戶的第三方存取管理頁面撤銷對 Spine Viewer 的授權。</li>
+              <li>你可以刪除瀏覽器本機資料，以移除主題設定與 Google Drive 導覽紀錄等本地偏好。</li>
+            </ul>
+          </div>
+          <div class="lang-card">
+            <div class="lang-label">English</div>
+            <ul>
+              <li>You may choose not to use Google Drive features at all and load Spine assets only from local files.</li>
+              <li>You may revoke Spine Viewer access from your Google Account's third-party access management settings.</li>
+              <li>You may delete local browser data to remove theme settings and Google Drive navigation history stored on your device.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>9. 政策更新 / Policy Updates</h2>
+        <div class="lang-grid">
+          <div class="lang-card">
+            <div class="lang-label">繁體中文</div>
+            <p>
+              若本服務的資料處理方式、Google API 權限範圍或功能流程有變更，本頁內容將同步更新。你應在再次使用前檢查最新版本。
+            </p>
+          </div>
+          <div class="lang-card">
+            <div class="lang-label">English</div>
+            <p>
+              If the service's data handling practices, Google API scope usage, or product flow changes, this page will be updated accordingly.
+              You should review the latest version before continuing to use the service.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>10. 聯絡方式 / Contact</h2>
+        <div class="lang-grid">
+          <div class="lang-card">
+            <div class="lang-label">繁體中文</div>
+            <p>若你對本政策有疑問，或想要求釐清資料處理方式，請透過下列公開管道聯絡。</p>
+          </div>
+          <div class="lang-card">
+            <div class="lang-label">English</div>
+            <p>If you have questions about this policy or want clarification about data handling, please use the public contact channels below.</p>
+          </div>
+        </div>
+        <div class="contact-row" style="margin-top: 18px;">
+          <a class="contact" href="https://github.com/hsienwei/spine-viewer/issues" target="_blank" rel="noreferrer">
+            GitHub Issues
+          </a>
+          <a class="contact" href="./terms-of-service.html">
+            Terms of Service
+          </a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
