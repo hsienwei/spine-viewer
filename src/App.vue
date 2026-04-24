@@ -76,6 +76,32 @@
           />
         </div>
       </div>
+
+      <div class="sidebar-footer">
+        <button
+          type="button"
+          class="sidebar-link sidebar-link-button"
+          @click="isInfoOpen = true"
+        >
+          Info
+        </button>
+        <a
+          class="sidebar-link"
+          :href="privacyPolicyUrl"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Privacy Policy
+        </a>
+        <a
+          class="sidebar-link"
+          :href="termsOfServiceUrl"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Terms of Service
+        </a>
+      </div>
     </aside>
 
     <main class="main-content">
@@ -105,11 +131,47 @@
         @speed-change="handleSpeedChange"
       />
     </main>
+
+    <div
+      v-if="isInfoOpen"
+      class="info-modal-backdrop"
+      @click.self="isInfoOpen = false"
+    >
+      <section
+        class="info-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="info-modal-title"
+      >
+        <div class="info-modal-header">
+          <div>
+            <p class="info-modal-kicker">About</p>
+            <h2 id="info-modal-title" class="info-modal-title">Spine Viewer</h2>
+          </div>
+          <button
+            type="button"
+            class="info-modal-close"
+            aria-label="Close info dialog"
+            @click="isInfoOpen = false"
+          >
+            ×
+          </button>
+        </div>
+        <div class="info-modal-body">
+          <p class="info-modal-copy">
+            Spine Viewer 是用來載入、檢視與播放 Spine 動畫資產的網頁工具，支援本機檔案與 Google Drive 檔案挑選。
+          </p>
+          <p class="info-modal-copy">
+            Google Drive 權限只用於列出與下載你明確選取的檔案，供瀏覽器內預覽使用；詳細資料處理方式請參考 Privacy Policy。
+          </p>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import packageJson from '../package.json'
 import ControlPanel from './components/ControlPanel.vue'
 import PlaybackOverlay from './components/PlaybackOverlay.vue'
@@ -131,6 +193,7 @@ const premultipliedAlpha = ref(true)
 const spineCanvasRef = ref<InstanceType<typeof SpineCanvas> | null>(null)
 const isControlPanelOpen = ref(true)
 const isStructurePanelOpen = ref(true)
+const isInfoOpen = ref(false)
 
 const animations = ref<string[]>([])
 const structure = ref<SpineSkeletonStructure>({ bones: [], slots: [], totalBones: 0 })
@@ -144,9 +207,17 @@ const initialRuntimeVersion = ref<SpineMajorVersion | null>(null)
 const fallbackUsed = ref(false)
 
 const hasStructurePanel = computed(() => structure.value.bones.length > 0)
+const privacyPolicyUrl = `${import.meta.env.BASE_URL}privacy-policy.html`
+const termsOfServiceUrl = `${import.meta.env.BASE_URL}terms-of-service.html`
 
 const THEME_KEY = 'spine-viewer-theme'
 const isDark = ref(true)
+
+const handleWindowKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') {
+    isInfoOpen.value = false
+  }
+}
 
 const applyTheme = (dark: boolean) => {
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
@@ -166,6 +237,11 @@ onMounted(() => {
     isDark.value = !window.matchMedia('(prefers-color-scheme: light)').matches
   }
   applyTheme(isDark.value)
+  window.addEventListener('keydown', handleWindowKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleWindowKeydown)
 })
 
 const handleFileSelected = (payload: { files: File[] }) => {
@@ -345,6 +421,39 @@ html, body, #app {
   background: var(--bg-panel);
 }
 
+.sidebar-footer {
+  padding: 14px 16px 18px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-link {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+
+.sidebar-link:hover {
+  color: var(--accent);
+}
+
+.sidebar-link-button {
+  justify-content: flex-start;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
 .sidebar-brand {
   display: flex;
   align-items: center;
@@ -472,5 +581,81 @@ html, body, #app {
   align-items: center;
   justify-content: center;
   background: #000;
+}
+
+.info-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(7, 6, 5, 0.68);
+  backdrop-filter: blur(4px);
+  z-index: 1200;
+}
+
+.info-modal {
+  width: min(100%, 460px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-panel);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.info-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.info-modal-kicker {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.info-modal-title {
+  margin-top: 6px;
+  font-size: 20px;
+  color: var(--text-primary);
+}
+
+.info-modal-close {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--transition), border-color var(--transition), background var(--transition);
+}
+
+.info-modal-close:hover {
+  color: var(--accent);
+  border-color: var(--border-glow);
+  background: var(--accent-dim);
+}
+
+.info-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+}
+
+.info-modal-copy {
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--text-secondary);
 }
 </style>
