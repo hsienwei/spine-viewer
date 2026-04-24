@@ -74,20 +74,11 @@ const showControls = computed(() => !!props.structure && props.structure.bones.l
 
 <style scoped>
 .structure-panel {
-  height: 100%;
-  min-height: 0;
   padding: 14px 14px 20px;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
 }
-
-.structure-panel::-webkit-scrollbar { width: 4px; }
-.structure-panel::-webkit-scrollbar-track { background: transparent; }
-.structure-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 .section {
   display: flex;
@@ -118,7 +109,6 @@ const showControls = computed(() => !!props.structure && props.structure.bones.l
 
 .hierarchy-section {
   min-height: 0;
-  flex: 1;
 }
 
 .toggle-group {

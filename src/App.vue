@@ -20,60 +20,62 @@
         </button>
       </div>
 
-      <div class="sidebar-panel">
-        <button
-          type="button"
-          class="sidebar-panel-header"
-          @click="isControlPanelOpen = !isControlPanelOpen"
-        >
-          <span>Controls</span>
-          <svg class="panel-chevron" :class="{ open: isControlPanelOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-        <div v-show="isControlPanelOpen" class="sidebar-panel-body">
-          <ControlPanel
-            @file-selected="handleFileSelected"
-            @animation-change="handleAnimationChange"
-            @show-axes-change="handleShowAxesChange"
-            @premultiply-alpha-change="handlePremultipliedAlphaChange"
-            :animations="animations"
-            :current-animation="animationName"
-            :current-time="currentTime"
-            :duration="duration"
-            :draw-call="drawCall"
-            :detected-version="detectedVersion"
-            :runtime-version="runtimeVersion"
-            :initial-runtime-version="initialRuntimeVersion"
-            :fallback-used="fallbackUsed"
-            :show-axes="showAxes"
-            :premultiplied-alpha="premultipliedAlpha"
-          />
+      <div class="sidebar-content">
+        <div class="sidebar-panel">
+          <button
+            type="button"
+            class="sidebar-panel-header"
+            @click="isControlPanelOpen = !isControlPanelOpen"
+          >
+            <span>Controls</span>
+            <svg class="panel-chevron" :class="{ open: isControlPanelOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div v-show="isControlPanelOpen" class="sidebar-panel-body">
+            <ControlPanel
+              @file-selected="handleFileSelected"
+              @animation-change="handleAnimationChange"
+              @show-axes-change="handleShowAxesChange"
+              @premultiply-alpha-change="handlePremultipliedAlphaChange"
+              :animations="animations"
+              :current-animation="animationName"
+              :current-time="currentTime"
+              :duration="duration"
+              :draw-call="drawCall"
+              :detected-version="detectedVersion"
+              :runtime-version="runtimeVersion"
+              :initial-runtime-version="initialRuntimeVersion"
+              :fallback-used="fallbackUsed"
+              :show-axes="showAxes"
+              :premultiplied-alpha="premultipliedAlpha"
+            />
+          </div>
         </div>
-      </div>
 
-      <div v-if="hasStructurePanel" class="sidebar-panel sidebar-panel-fill">
-        <button
-          type="button"
-          class="sidebar-panel-header"
-          @click="isStructurePanelOpen = !isStructurePanelOpen"
-        >
-          <span>Skeleton</span>
-          <svg class="panel-chevron" :class="{ open: isStructurePanelOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-        <div v-show="isStructurePanelOpen" class="sidebar-panel-body">
-          <StructurePanel
-            @show-bones-change="handleShowBonesChange"
-            @show-slots-change="handleShowSlotsChange"
-            @bone-selected="handleBoneSelected"
-            @slot-selected="handleSlotSelected"
-            :structure="structure"
-            :selection="selection"
-            :show-bones="showBones"
-            :show-slots="showSlots"
-          />
+        <div v-if="hasStructurePanel" class="sidebar-panel">
+          <button
+            type="button"
+            class="sidebar-panel-header"
+            @click="isStructurePanelOpen = !isStructurePanelOpen"
+          >
+            <span>Skeleton</span>
+            <svg class="panel-chevron" :class="{ open: isStructurePanelOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div v-show="isStructurePanelOpen" class="sidebar-panel-body">
+            <StructurePanel
+              @show-bones-change="handleShowBonesChange"
+              @show-slots-change="handleShowSlotsChange"
+              @bone-selected="handleBoneSelected"
+              @slot-selected="handleSlotSelected"
+              :structure="structure"
+              :selection="selection"
+              :show-bones="showBones"
+              :show-slots="showSlots"
+            />
+          </div>
         </div>
       </div>
 
@@ -421,13 +423,30 @@ html, body, #app {
   background: var(--bg-panel);
 }
 
+.sidebar-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.sidebar-content::-webkit-scrollbar { width: 4px; }
+.sidebar-content::-webkit-scrollbar-track { background: transparent; }
+.sidebar-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
 .sidebar-footer {
+  margin-top: auto;
   padding: 14px 16px 18px;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  position: relative;
+  z-index: 1;
+  background: var(--bg-panel);
+  box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.16);
 }
 
 .sidebar-link {
@@ -524,12 +543,7 @@ html, body, #app {
 .sidebar-panel {
   display: flex;
   flex-direction: column;
-  min-height: 0;
   border-bottom: 1px solid var(--border);
-}
-
-.sidebar-panel-fill {
-  flex: 1;
 }
 
 .sidebar-panel-header {
@@ -569,9 +583,7 @@ html, body, #app {
 }
 
 .sidebar-panel-body {
-  min-height: 0;
-  flex: 1;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .main-content {

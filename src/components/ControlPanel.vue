@@ -325,20 +325,11 @@ const fallbackStatusLabel = computed(() => {
 
 <style scoped>
 .control-panel {
-  height: 100%;
-  min-height: 0;
   padding: 14px 14px 20px;
   display: flex;
   flex-direction: column;
   gap: 22px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
 }
-
-.control-panel::-webkit-scrollbar { width: 4px; }
-.control-panel::-webkit-scrollbar-track { background: transparent; }
-.control-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 .section {
   display: flex;
