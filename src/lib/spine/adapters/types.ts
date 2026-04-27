@@ -42,10 +42,13 @@ export interface SpineSessionCreateInput {
   canvas: HTMLCanvasElement
   sourceFiles: SpineSourceFiles
   animationName?: string
+  skinName?: string
   premultipliedAlpha?: boolean
   onLoaded: (data: {
     animations: string[]
     animationSummaries: SpineAnimationSummary[]
+    skins: string[]
+    currentSkin: string
     skeletonName: string
     drawCall: number
     duration: number
@@ -70,6 +73,7 @@ export interface SpineDebugOptions {
 export interface SpineRuntimeSession {
   version: SpineMajorVersion
   setAnimation(name: string, loop: boolean): void
+  setSkin(name: string): void
   setPlayback(enabled: boolean, playbackRate: number): void
   setDebugOptions(options: SpineDebugOptions): void
   setSelection(selection: SpineSelectionState): void

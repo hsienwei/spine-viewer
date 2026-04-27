@@ -42,6 +42,7 @@ import type { SpineDetectedVersion, SpineMajorVersion } from '../lib/spine/versi
 const props = defineProps<{
   files?: File[]
   animationName?: string
+  skinName?: string
   isPlaying?: boolean
   playbackRate?: number
   showAxes?: boolean
@@ -55,6 +56,8 @@ const emit = defineEmits<{
   (e: 'loaded', data: {
     animations: string[]
     animationSummaries: SpineAnimationSummary[]
+    skins: string[]
+    currentSkin: string
     skeletonName: string
     drawCall: number
     duration: number
@@ -146,6 +149,9 @@ const syncSessionState = () => {
   if (!activeSession) return
 
   activeSession.setPlayback(props.isPlaying !== false, props.playbackRate || 1)
+  if (props.skinName) {
+    activeSession.setSkin(props.skinName)
+  }
   activeSession.setDebugOptions({
     showAxes: props.showAxes !== false,
     showBones: !!props.showBones,
@@ -225,6 +231,7 @@ const loadSpine = async () => {
           canvas: canvasRef.value,
           sourceFiles: detection.sourceFiles,
           animationName: props.animationName,
+          skinName: props.skinName,
           premultipliedAlpha: props.premultipliedAlpha ?? true,
           onLoaded: (data) => {
             if (requestId !== loadRequestId) return
@@ -303,6 +310,12 @@ watch(() => props.files, (files) => {
 watch(() => props.animationName, (animName) => {
   if (animName && activeSession) {
     activeSession.setAnimation(animName, true)
+  }
+})
+
+watch(() => props.skinName, (skinName) => {
+  if (skinName && activeSession) {
+    activeSession.setSkin(skinName)
   }
 })
 

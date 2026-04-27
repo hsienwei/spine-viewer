@@ -66,6 +66,8 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
       let currentSelection = { boneName: null as string | null, slotName: null as string | null }
       let playbackEnabled = true
       let playbackRate = 1
+      let availableSkins: string[] = []
+      let currentSkinName = ''
       let premultipliedAlpha = input.premultipliedAlpha ?? true
       let settled = false
       let disposed = false
@@ -172,6 +174,20 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
 
       const getCurrentTrack = () => animationState?.getCurrent(0) || null
 
+      const updateSkeletonWorldTransform = () => {
+        skeleton?.updateWorldTransform(spine.Physics.update)
+      }
+
+      const applySkin = (name: string | null | undefined) => {
+        if (!skeleton || !name || !availableSkins.includes(name)) return
+
+        skeleton.setSkinByName(name)
+        currentSkinName = name
+        skeleton.setSlotsToSetupPose()
+        animationState?.apply(skeleton)
+        updateSkeletonWorldTransform()
+      }
+
       const updateCanvasSize = () => {
         input.canvas.width = input.canvas.clientWidth * window.devicePixelRatio
         input.canvas.height = input.canvas.clientHeight * window.devicePixelRatio
@@ -200,6 +216,9 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
           if (animationState && name) {
             animationState.setAnimation(0, name, loop)
           }
+        },
+        setSkin: (name: string) => {
+          applySkin(name)
         },
         setPlayback: (enabled: boolean, nextRate: number) => {
           playbackEnabled = enabled
@@ -302,6 +321,20 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
           const skeletonData = skeletonJson.readSkeletonData(skeletonText)
 
           skeleton = new spine.Skeleton(skeletonData)
+          availableSkins = Array.isArray(skeletonData.skins)
+            ? skeletonData.skins
+                .map((skin: any) => skin?.name)
+                .filter((skinName: string | undefined): skinName is string => !!skinName)
+            : []
+          currentSkinName = (
+            (input.skinName && availableSkins.includes(input.skinName) && input.skinName)
+            || skeletonData.defaultSkin?.name
+            || availableSkins[0]
+            || ''
+          )
+          if (currentSkinName) {
+            applySkin(currentSkinName)
+          }
           const animationStateData = new spine.AnimationStateData(skeletonData)
           animationState = new spine.AnimationState(animationStateData)
           attachAnimationListener()
@@ -319,6 +352,8 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
           input.onLoaded({
             animations,
             animationSummaries,
+            skins: availableSkins,
+            currentSkin: currentSkinName,
             skeletonName: skeletonData.name || 'spine',
             drawCall: 0,
             duration: animationSummaries.find(animation => animation.name === firstAnim)?.duration || 0,
@@ -343,7 +378,7 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
         animationState.update(delta * timeScale)
         animationState.apply(skeleton)
         skeleton.update(delta)
-        skeleton.updateWorldTransform(spine.Physics.update)
+        updateSkeletonWorldTransform()
 
         const track = animationState.getCurrent(0)
         let currentTime = 0

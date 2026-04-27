@@ -108,6 +108,18 @@
       </div>
     </section>
 
+    <section v-if="skins && skins.length > 0" class="section">
+      <h3 class="section-title">Skin</h3>
+      <div class="select-wrapper">
+        <select v-model="localSkin" class="select-input" @change="emitSkinChange">
+          <option v-for="skin in skins" :key="skin" :value="skin">{{ skin }}</option>
+        </select>
+        <svg class="select-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </section>
+
     <!-- Info -->
     <section v-if="animations && animations.length > 0" class="section">
       <h3 class="section-title">Info</h3>
@@ -115,6 +127,10 @@
         <div class="info-row">
           <span class="info-label">Animation</span>
           <span class="info-value">{{ currentAnimation || '—' }}</span>
+        </div>
+        <div v-if="skins && skins.length > 0" class="info-row">
+          <span class="info-label">Skin</span>
+          <span class="info-value">{{ currentSkin || '--' }}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Draw Calls</span>
@@ -203,7 +219,9 @@ interface FileData {
 
 const props = defineProps<{
   animations?: string[]
+  skins?: string[]
   currentAnimation?: string
+  currentSkin?: string
   currentTime?: number
   duration?: number
   drawCall?: number
@@ -219,6 +237,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'file-selected': [payload: { files: File[] }]
   'animation-change': [name: string]
+  'skin-change': [name: string]
   'show-axes-change': [value: boolean]
   'premultiply-alpha-change': [value: boolean]
 }>()
@@ -231,10 +250,22 @@ const analysisIssues = ref<string[]>([])
 const selectedGroupId = ref('')
 const isAnalyzingFiles = ref(false)
 const localAnimation = ref('')
+const localSkin = ref('')
 let fileAnalysisRequestId = 0
 
 watch(() => props.currentAnimation, (val) => {
   if (val) localAnimation.value = val
+})
+
+watch(() => props.currentSkin, (val) => {
+  if (val) {
+    localSkin.value = val
+    return
+  }
+
+  if (!props.skins?.length) {
+    localSkin.value = ''
+  }
 })
 
 const selectedGroup = computed(() => {
@@ -310,6 +341,12 @@ const handleDriveConfirm = (files: File[]) => {
 const emitAnimationChange = () => {
   if (localAnimation.value) {
     emit('animation-change', localAnimation.value)
+  }
+}
+
+const emitSkinChange = () => {
+  if (localSkin.value) {
+    emit('skin-change', localSkin.value)
   }
 }
 

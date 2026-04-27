@@ -36,10 +36,13 @@
             <ControlPanel
               @file-selected="handleFileSelected"
               @animation-change="handleAnimationChange"
+              @skin-change="handleSkinChange"
               @show-axes-change="handleShowAxesChange"
               @premultiply-alpha-change="handlePremultipliedAlphaChange"
               :animations="animations"
+              :skins="skins"
               :current-animation="animationName"
+              :current-skin="currentSkin"
               :current-time="currentTime"
               :duration="duration"
               :draw-call="drawCall"
@@ -113,6 +116,7 @@
         ref="spineCanvasRef"
         :files="sourceFiles"
         :animation-name="animationName"
+        :skin-name="currentSkin"
         :is-playing="isPlaying"
         :playback-rate="playbackRate"
         :show-axes="showAxes"
@@ -193,6 +197,7 @@ const appVersion = packageJson.version
 
 const sourceFiles = ref<File[]>([])
 const animationName = ref('')
+const currentSkin = ref('')
 const isPlaying = ref(true)
 const playbackRate = ref(1)
 const showAxes = ref(true)
@@ -205,6 +210,7 @@ const isStructurePanelOpen = ref(true)
 const isInfoOpen = ref(false)
 
 const animations = ref<string[]>([])
+const skins = ref<string[]>([])
 const animationSummaries = ref<SpineAnimationSummary[]>([])
 const structure = ref<SpineSkeletonStructure>({ bones: [], slots: [], totalBones: 0 })
 const selection = ref<SpineSelectionState>({ boneName: null, slotName: null })
@@ -286,7 +292,16 @@ onUnmounted(() => {
 
 const handleFileSelected = (payload: { files: File[] }) => {
   sourceFiles.value = payload.files
+  animations.value = []
+  animationName.value = ''
+  skins.value = []
+  currentSkin.value = ''
   animationSummaries.value = []
+  structure.value = { bones: [], slots: [], totalBones: 0 }
+  selection.value = { boneName: null, slotName: null }
+  currentTime.value = 0
+  duration.value = 0
+  drawCall.value = 0
   detectedVersion.value = null
   runtimeVersion.value = null
   initialRuntimeVersion.value = null
@@ -305,6 +320,10 @@ const handleAnimationChange = (name: string) => {
   currentTime.value = 0
   duration.value = animationSummaries.value.find(animation => animation.name === name)?.duration || duration.value
   clearRuntimeNotifications()
+}
+
+const handleSkinChange = (name: string) => {
+  currentSkin.value = name
 }
 
 const handlePlaybackChange = (playing: boolean) => {
@@ -353,6 +372,8 @@ const handleSlotSelected = (slotName: string, boneName: string) => {
 const handleLoaded = (data: {
   animations: string[]
   animationSummaries: SpineAnimationSummary[]
+  skins: string[]
+  currentSkin: string
   skeletonName: string
   drawCall: number
   duration: number
@@ -363,6 +384,8 @@ const handleLoaded = (data: {
   fallbackUsed: boolean
 }) => {
   animations.value = data.animations
+  skins.value = data.skins
+  currentSkin.value = data.currentSkin
   animationSummaries.value = data.animationSummaries
   structure.value = data.structure
   selection.value = { boneName: null, slotName: null }
