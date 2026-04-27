@@ -120,6 +120,10 @@
           <span class="info-label">Draw Calls</span>
           <span class="info-value mono">{{ drawCall || 0 }}</span>
         </div>
+        <div class="info-row">
+          <span class="info-label">Event Markers</span>
+          <span class="info-value mono">{{ eventMarkerCount }}</span>
+        </div>
       </div>
     </section>
 
@@ -203,6 +207,7 @@ const props = defineProps<{
   currentTime?: number
   duration?: number
   drawCall?: number
+  eventMarkerCount?: number
   detectedVersion?: SpineDetectedVersion | null
   runtimeVersion?: SpineMajorVersion | null
   initialRuntimeVersion?: SpineMajorVersion | null

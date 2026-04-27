@@ -43,6 +43,7 @@
               :current-time="currentTime"
               :duration="duration"
               :draw-call="drawCall"
+              :event-marker-count="currentAnimationMarkers.length"
               :detected-version="detectedVersion"
               :runtime-version="runtimeVersion"
               :initial-runtime-version="initialRuntimeVersion"
@@ -77,6 +78,7 @@
             />
           </div>
         </div>
+
       </div>
 
       <div class="sidebar-footer">
@@ -120,14 +122,18 @@
         :premultiplied-alpha="premultipliedAlpha"
         @loaded="(data) => handleLoaded(data)"
         @time-update="(time, animDuration, frameDrawCall) => handleTimeUpdate(time, animDuration, frameDrawCall)"
+        @runtime-event="(payload) => handleRuntimeEvent(payload)"
         @error="(err) => handleError(err)"
       />
       <PlaybackOverlay
         :visible="animations.length > 0"
+        :animation-name="animationName"
         :current-time="currentTime"
         :duration="duration"
         :is-playing="isPlaying"
         :playback-rate="playbackRate"
+        :event-markers="currentAnimationMarkers"
+        :runtime-notifications="visibleRuntimeNotifications"
         @playback-change="handlePlaybackChange"
         @seek="handleSeek"
         @speed-change="handleSpeedChange"
@@ -179,6 +185,7 @@ import ControlPanel from './components/ControlPanel.vue'
 import PlaybackOverlay from './components/PlaybackOverlay.vue'
 import SpineCanvas from './components/SpineCanvas.vue'
 import StructurePanel from './components/StructurePanel.vue'
+import type { SpineAnimationEventMarker, SpineAnimationEventPayload, SpineAnimationSummary } from './lib/spine/adapters'
 import type { SpineSelectionState, SpineSkeletonStructure } from './lib/spine/skeletonStructure'
 import type { SpineDetectedVersion, SpineMajorVersion } from './lib/spine/versionDetection'
 
@@ -198,6 +205,7 @@ const isStructurePanelOpen = ref(true)
 const isInfoOpen = ref(false)
 
 const animations = ref<string[]>([])
+const animationSummaries = ref<SpineAnimationSummary[]>([])
 const structure = ref<SpineSkeletonStructure>({ bones: [], slots: [], totalBones: 0 })
 const selection = ref<SpineSelectionState>({ boneName: null, slotName: null })
 const currentTime = ref(0)
@@ -208,12 +216,40 @@ const runtimeVersion = ref<SpineMajorVersion | null>(null)
 const initialRuntimeVersion = ref<SpineMajorVersion | null>(null)
 const fallbackUsed = ref(false)
 
+interface RuntimeNotificationRecord {
+  id: number
+  eventName: string
+  animationName: string | null
+  trackIndex: number
+  trackTime: number | null
+  receivedAt: string
+  visible: boolean
+  count: number
+}
+
+const runtimeNotifications = ref<RuntimeNotificationRecord[]>([])
+
 const hasStructurePanel = computed(() => structure.value.bones.length > 0)
+const currentAnimationSummary = computed(() => {
+  return animationSummaries.value.find(animation => animation.name === animationName.value) || null
+})
+const currentAnimationMarkers = computed<SpineAnimationEventMarker[]>(() => {
+  return currentAnimationSummary.value?.eventMarkers || []
+})
+const visibleRuntimeNotifications = computed(() => {
+  return runtimeNotifications.value.filter(item => item.visible).slice(0, 3)
+})
 const privacyPolicyUrl = `${import.meta.env.BASE_URL}privacy-policy.html`
 const termsOfServiceUrl = `${import.meta.env.BASE_URL}terms-of-service.html`
 
 const THEME_KEY = 'spine-viewer-theme'
+const RUNTIME_NOTIFICATION_LIMIT = 12
+const RUNTIME_NOTIFICATION_DURATION_MS = 500
+const RUNTIME_NOTIFICATION_DEDUPE_WINDOW_MS = 600
+const EVENT_MARKER_TIME_TOLERANCE = 0.02
 const isDark = ref(true)
+let runtimeNotificationId = 0
+const runtimeNotificationTimers = new Map<number, number>()
 
 const handleWindowKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
@@ -244,18 +280,31 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleWindowKeydown)
+  runtimeNotificationTimers.forEach(timeoutId => window.clearTimeout(timeoutId))
+  runtimeNotificationTimers.clear()
 })
 
 const handleFileSelected = (payload: { files: File[] }) => {
   sourceFiles.value = payload.files
+  animationSummaries.value = []
   detectedVersion.value = null
   runtimeVersion.value = null
   initialRuntimeVersion.value = null
   fallbackUsed.value = false
+  clearRuntimeNotifications()
+}
+
+const clearRuntimeNotifications = () => {
+  runtimeNotificationTimers.forEach(timeoutId => window.clearTimeout(timeoutId))
+  runtimeNotificationTimers.clear()
+  runtimeNotifications.value = []
 }
 
 const handleAnimationChange = (name: string) => {
   animationName.value = name
+  currentTime.value = 0
+  duration.value = animationSummaries.value.find(animation => animation.name === name)?.duration || duration.value
+  clearRuntimeNotifications()
 }
 
 const handlePlaybackChange = (playing: boolean) => {
@@ -303,6 +352,7 @@ const handleSlotSelected = (slotName: string, boneName: string) => {
 
 const handleLoaded = (data: {
   animations: string[]
+  animationSummaries: SpineAnimationSummary[]
   skeletonName: string
   drawCall: number
   duration: number
@@ -313,12 +363,14 @@ const handleLoaded = (data: {
   fallbackUsed: boolean
 }) => {
   animations.value = data.animations
+  animationSummaries.value = data.animationSummaries
   structure.value = data.structure
   selection.value = { boneName: null, slotName: null }
+  clearRuntimeNotifications()
   if (data.animations.length > 0) {
     animationName.value = data.animations[0]
-    duration.value = data.duration || 2.5
   }
+  duration.value = data.duration || data.animationSummaries[0]?.duration || 2.5
   drawCall.value = data.drawCall
   currentTime.value = 0
   detectedVersion.value = data.detectedVersion
@@ -331,6 +383,129 @@ const handleTimeUpdate = (time: number, animDuration: number, frameDrawCall: num
   currentTime.value = time
   duration.value = animDuration || duration.value
   drawCall.value = frameDrawCall
+}
+
+const hideRuntimeNotification = (notificationId: number) => {
+  runtimeNotificationTimers.delete(notificationId)
+  runtimeNotifications.value = runtimeNotifications.value.map(item => (
+    item.id === notificationId
+      ? { ...item, visible: false }
+      : item
+  ))
+}
+
+const patchMarkerEventNameFromRuntime = (payload: SpineAnimationEventPayload) => {
+  const eventName = payload.eventName?.trim()
+  const eventTime = payload.trackTime
+  const targetAnimationName = payload.animationName || animationName.value
+
+  if (!eventName || typeof eventTime !== 'number' || !targetAnimationName) return
+
+  animationSummaries.value = animationSummaries.value.map(summary => {
+    if (summary.name !== targetAnimationName) return summary
+
+    let changed = false
+    const nextMarkers = summary.eventMarkers.map(marker => {
+      if (Math.abs(marker.time - eventTime) >= EVENT_MARKER_TIME_TOLERANCE) {
+        return marker
+      }
+
+      const unnamedEventIndex = marker.events.findIndex(event => {
+        const currentName = event.eventName?.trim() || ''
+        return !currentName || currentName === 'Unnamed event'
+      })
+
+      if (unnamedEventIndex === -1) return marker
+
+      const nextEvents = marker.events.map((event, index) => {
+        if (index !== unnamedEventIndex) return event
+
+        return {
+          ...event,
+          eventName
+        }
+      })
+
+      changed = true
+      return {
+        ...marker,
+        events: nextEvents
+      }
+    })
+
+    if (!changed) return summary
+
+    return {
+      ...summary,
+      eventMarkers: nextMarkers
+    }
+  })
+}
+
+const handleRuntimeEvent = (payload: SpineAnimationEventPayload) => {
+  if (payload.type !== 'event') return
+
+  patchMarkerEventNameFromRuntime(payload)
+
+  const now = new Date()
+  const previousItem = runtimeNotifications.value[0]
+  const sameAsPrevious = previousItem
+    && previousItem.eventName === (payload.eventName || 'Unnamed event')
+    && previousItem.animationName === payload.animationName
+    && previousItem.trackIndex === payload.trackIndex
+    && previousItem.trackTime !== null
+    && payload.trackTime !== null
+    && Math.abs(previousItem.trackTime - payload.trackTime) < 0.001
+    && (now.getTime() - new Date(previousItem.receivedAt).getTime()) <= RUNTIME_NOTIFICATION_DEDUPE_WINDOW_MS
+
+  if (sameAsPrevious) {
+    const timerId = runtimeNotificationTimers.get(previousItem.id)
+    if (timerId !== undefined) {
+      window.clearTimeout(timerId)
+    }
+
+    runtimeNotifications.value = runtimeNotifications.value.map(item => (
+      item.id === previousItem.id
+        ? {
+            ...item,
+            count: item.count + 1,
+            receivedAt: now.toISOString(),
+            visible: true
+          }
+        : item
+    ))
+
+    const timeoutId = window.setTimeout(() => hideRuntimeNotification(previousItem.id), RUNTIME_NOTIFICATION_DURATION_MS)
+    runtimeNotificationTimers.set(previousItem.id, timeoutId)
+    return
+  }
+
+  const id = ++runtimeNotificationId
+  const nextItem: RuntimeNotificationRecord = {
+    id,
+    eventName: payload.eventName || 'Unnamed event',
+    animationName: payload.animationName,
+    trackIndex: payload.trackIndex,
+    trackTime: payload.trackTime,
+    receivedAt: now.toISOString(),
+    visible: true,
+    count: 1
+  }
+
+  runtimeNotifications.value = [nextItem, ...runtimeNotifications.value]
+    .slice(0, RUNTIME_NOTIFICATION_LIMIT)
+
+  const timeoutId = window.setTimeout(() => hideRuntimeNotification(id), RUNTIME_NOTIFICATION_DURATION_MS)
+  runtimeNotificationTimers.set(id, timeoutId)
+
+  const removedIds = [...runtimeNotificationTimers.keys()].filter(activeId => !runtimeNotifications.value.some(item => item.id === activeId))
+  removedIds.forEach(removedId => {
+    const timerId = runtimeNotificationTimers.get(removedId)
+    if (timerId !== undefined) {
+      window.clearTimeout(timerId)
+      runtimeNotificationTimers.delete(removedId)
+    }
+  })
 }
 
 const handleError = (error: string) => {
@@ -360,6 +535,15 @@ const handleError = (error: string) => {
   --success:      #5fad82;
   --info:         #5b96d4;
   --danger:       #c46b5a;
+  --event-highlight-fill:       #ffe27a;
+  --event-highlight-border:     rgba(55, 39, 6, 0.95);
+  --event-highlight-ring:       rgba(255, 226, 122, 0.24);
+  --event-highlight-glow:       rgba(255, 226, 122, 0.78);
+  --event-highlight-glow-wide:  rgba(255, 226, 122, 0.4);
+  --tooltip-bg: rgba(11, 14, 18, 0.94);
+  --tooltip-border: rgba(91, 150, 212, 0.36);
+  --tooltip-text: #f5ede0;
+  --tooltip-muted: #8fc0f1;
 
   --font-ui:   'Syne', 'Noto Sans TC', sans-serif;
   --font-mono: 'DM Mono', 'Noto Sans TC', monospace;
@@ -390,6 +574,15 @@ const handleError = (error: string) => {
   --success:      #2e8a56;
   --info:         #2e6cb8;
   --danger:       #b04030;
+  --event-highlight-fill:       #c97700;
+  --event-highlight-border:     rgba(255, 248, 235, 0.95);
+  --event-highlight-ring:       rgba(201, 119, 0, 0.28);
+  --event-highlight-glow:       rgba(173, 95, 0, 0.88);
+  --event-highlight-glow-wide:  rgba(173, 95, 0, 0.45);
+  --tooltip-bg: rgba(248, 242, 233, 0.98);
+  --tooltip-border: rgba(46, 108, 184, 0.3);
+  --tooltip-text: #1c1610;
+  --tooltip-muted: #2e6cb8;
 }
 
 * {

@@ -2,7 +2,14 @@ import { createSpineResolvedResources } from '../fileResources'
 import { buildSkeletonStructure } from '../skeletonStructure'
 import { loadSpine3Runtime } from '../loaders/loadSpine3Runtime'
 import { createAxisOverlay } from './axisOverlay'
-import type { SpineDebugOptions, SpineRuntimeAdapter, SpineRuntimeSession, SpineSessionCreateInput } from './types'
+import { extractAnimationSummaries } from './extractAnimationSummaries'
+import type {
+  SpineAnimationEventType,
+  SpineDebugOptions,
+  SpineRuntimeAdapter,
+  SpineRuntimeSession,
+  SpineSessionCreateInput
+} from './types'
 
 const SPINE3_RUNTIME_UNAVAILABLE_MESSAGE =
   'Spine 3.x runtime bundle is not ready. Replace vendor/spine-3.8/dist/spine-webgl-3.8.js with a real Spine 3.8 build, and ensure it exports the required runtime APIs.'
@@ -99,6 +106,72 @@ export class Spine3RuntimeAdapter implements SpineRuntimeAdapter {
       let fittedCameraCenter = { x: 0, y: 0 }
       let fittedCameraZoom = 1
       let needsCameraFit = true
+
+      const getNormalizedTrackTime = (entry: any) => {
+        if (typeof entry?.trackTime !== 'number') return null
+
+        const duration = entry?.animation?.duration
+        if (typeof duration === 'number' && duration > 0) {
+          return entry.trackTime % duration
+        }
+
+        return entry.trackTime
+      }
+
+      const getTrackMeta = (entry: any) => ({
+        trackIndex: typeof entry?.trackIndex === 'number' ? entry.trackIndex : 0,
+        animationName: entry?.animation?.name ?? null,
+        trackTime: getNormalizedTrackTime(entry)
+      })
+
+      const emitStateEvent = (
+        type: Exclude<SpineAnimationEventType, 'event'>,
+        entry: any,
+        loopCount: number | null = null
+      ) => {
+        input.onAnimationEvent({
+          type,
+          ...getTrackMeta(entry),
+          loopCount
+        })
+      }
+
+      const emitTimelineEvent = (entry: any, timelineEvent: any) => {
+        const eventTime = typeof timelineEvent?.time === 'number'
+          ? timelineEvent.time
+          : getNormalizedTrackTime(entry)
+
+        input.onAnimationEvent({
+          type: 'event',
+          ...getTrackMeta(entry),
+          trackTime: eventTime,
+          eventName: timelineEvent?.data?.name ?? timelineEvent?.name ?? null,
+          intValue: typeof timelineEvent?.intValue === 'number' ? timelineEvent.intValue : null,
+          floatValue: typeof timelineEvent?.floatValue === 'number' ? timelineEvent.floatValue : null,
+          stringValue: typeof timelineEvent?.stringValue === 'string' ? timelineEvent.stringValue : null,
+          volume: typeof timelineEvent?.volume === 'number' ? timelineEvent.volume : null,
+          balance: typeof timelineEvent?.balance === 'number' ? timelineEvent.balance : null
+        })
+      }
+
+      const attachAnimationListener = () => {
+        if (!animationState || typeof animationState.addListener !== 'function') return
+
+        animationState.addListener({
+          start: (entry: any) => emitStateEvent('start', entry),
+          interrupt: (entry: any) => emitStateEvent('interrupt', entry),
+          end: (entry: any) => emitStateEvent('end', entry),
+          dispose: (entry: any) => emitStateEvent('dispose', entry),
+          complete: (entry: any) => {
+            const duration = entry?.animation?.duration
+            const loopCount = typeof entry?.trackTime === 'number' && typeof duration === 'number' && duration > 0
+              ? Math.floor(entry.trackTime / duration)
+              : null
+            emitStateEvent('complete', entry, loopCount)
+          },
+          event: (entry: any, timelineEvent: any) => emitTimelineEvent(entry, timelineEvent)
+        })
+      }
 
       const cleanup = () => {
         if (animFrameId) {
@@ -414,8 +487,10 @@ export class Spine3RuntimeAdapter implements SpineRuntimeAdapter {
           skeleton = new spine.Skeleton(skeletonData)
           const animationStateData = new spine.AnimationStateData(skeletonData)
           animationState = new spine.AnimationState(animationStateData)
+          attachAnimationListener()
 
-          const animations: string[] = skeletonData.animations.map((a: any) => a.name)
+          const animationSummaries = extractAnimationSummaries(skeletonData.animations, spine)
+          const animations: string[] = animationSummaries.map(animation => animation.name)
           const firstAnim = (input.animationName && animations.includes(input.animationName))
             ? input.animationName
             : animations[0]
@@ -428,9 +503,10 @@ export class Spine3RuntimeAdapter implements SpineRuntimeAdapter {
 
           input.onLoaded({
             animations,
+            animationSummaries,
             skeletonName: skeletonData.name || 'spine',
             drawCall: 0,
-            duration: skeletonData.animations.find((a: any) => a.name === firstAnim)?.duration || 0,
+            duration: animationSummaries.find(animation => animation.name === firstAnim)?.duration || 0,
             structure: buildSkeletonStructure(skeletonData.bones, skeletonData.slots)
           })
           publishViewState()

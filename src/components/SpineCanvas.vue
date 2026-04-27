@@ -36,7 +36,7 @@ import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { Spine3RuntimeAdapter, Spine4RuntimeAdapter } from '../lib/spine/adapters'
 import { detectSpineVersion } from '../lib/spine/versionDetection'
 import type { SpineSelectionState, SpineSkeletonStructure } from '../lib/spine/skeletonStructure'
-import type { SpineRuntimeSession } from '../lib/spine/adapters'
+import type { SpineAnimationEventPayload, SpineAnimationSummary, SpineRuntimeSession } from '../lib/spine/adapters'
 import type { SpineDetectedVersion, SpineMajorVersion } from '../lib/spine/versionDetection'
 
 const props = defineProps<{
@@ -54,6 +54,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'loaded', data: {
     animations: string[]
+    animationSummaries: SpineAnimationSummary[]
     skeletonName: string
     drawCall: number
     duration: number
@@ -65,6 +66,7 @@ const emit = defineEmits<{
   }): void
   (e: 'error', error: string): void
   (e: 'timeUpdate', currentTime: number, duration: number, drawCall: number): void
+  (e: 'runtimeEvent', payload: SpineAnimationEventPayload): void
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -239,6 +241,10 @@ const loadSpine = async () => {
           },
           onError: (message) => {
             attemptError = message
+          },
+          onAnimationEvent: (payload) => {
+            if (requestId !== loadRequestId) return
+            emit('runtimeEvent', payload)
           },
           onTimeUpdate: (time, duration, drawCall) => {
             if (requestId !== loadRequestId) return
