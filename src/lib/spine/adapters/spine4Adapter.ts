@@ -2,12 +2,14 @@ import { createSpineResolvedResources } from '../fileResources'
 import { buildSkeletonStructure } from '../skeletonStructure'
 import { createAxisOverlay } from './axisOverlay'
 import { extractAnimationSummaries } from './extractAnimationSummaries'
+import { DEFAULT_SPINE_DEBUG_OPTIONS, DEFAULT_SPINE_TEXTURE_FILTERING } from './types'
 import type {
   SpineAnimationEventType,
   SpineDebugOptions,
   SpineRuntimeAdapter,
   SpineRuntimeSession,
-  SpineSessionCreateInput
+  SpineSessionCreateInput,
+  SpineTextureFiltering
 } from './types'
 
 let spine4ModulePromise: Promise<any> | null = null
@@ -58,11 +60,13 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
 
     return new Promise<SpineRuntimeSession>((resolve, reject) => {
       let spineCanvas: any = null
+      let atlas: any = null
       let skeleton: any = null
       let animationState: any = null
       let viewScale = 1
       let panOffset = { x: 0, y: 0 }
-      let currentDebugOptions: SpineDebugOptions = { showAxes: true, showBones: false, showSlots: false }
+      let currentDebugOptions: SpineDebugOptions = { ...DEFAULT_SPINE_DEBUG_OPTIONS }
+      let currentTextureFiltering: SpineTextureFiltering = input.textureFiltering ?? DEFAULT_SPINE_TEXTURE_FILTERING
       let currentSelection = { boneName: null as string | null, slotName: null as string | null }
       let playbackEnabled = true
       let playbackRate = 1
@@ -148,6 +152,7 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
           spineCanvas.dispose()
           spineCanvas = null
         }
+        atlas = null
         skeleton = null
         animationState = null
         preloadedImages.clear()
@@ -210,6 +215,19 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
         needsCameraFit = false
       }
 
+      const applyTextureFiltering = (filtering: SpineTextureFiltering) => {
+        currentTextureFiltering = filtering
+
+        if (!atlas?.pages?.length) return
+
+        const minFilter = filtering === 'nearest' ? spine.TextureFilter.Nearest : spine.TextureFilter.Linear
+        const magFilter = filtering === 'nearest' ? spine.TextureFilter.Nearest : spine.TextureFilter.Linear
+
+        for (const page of atlas.pages) {
+          page.texture?.setFilters(minFilter, magFilter)
+        }
+      }
+
       const createSession = (): SpineRuntimeSession => ({
         version: 4,
         setAnimation: (name: string, loop: boolean) => {
@@ -229,6 +247,9 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
         },
         setDebugOptions: (options: SpineDebugOptions) => {
           currentDebugOptions = options
+        },
+        setTextureFiltering: (filtering: SpineTextureFiltering) => {
+          applyTextureFiltering(filtering)
         },
         setSelection: (selection) => {
           currentSelection = selection
@@ -298,7 +319,7 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
             return
           }
 
-          const atlas = new spine.TextureAtlas(atlasText)
+          atlas = new spine.TextureAtlas(atlasText)
 
           for (const page of atlas.pages) {
             const baseName = page.name.replace(/\.\w+$/, '')
@@ -315,6 +336,8 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
               console.warn(`No preloaded image for atlas page: ${page.name}`)
             }
           }
+
+          applyTextureFiltering(currentTextureFiltering)
 
           const atlasLoader = new spine.AtlasAttachmentLoader(atlas)
           const skeletonJson = new spine.SkeletonJson(atlasLoader)
@@ -405,21 +428,22 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
         sc.clear(0.15, 0.15, 0.15, 1)
 
         sc.renderer.begin()
-        sc.renderer.drawSkeleton(skeleton, premultipliedAlpha)
-        if (currentDebugOptions.showBones || currentDebugOptions.showSlots) {
-          sc.renderer.skeletonDebugRenderer.drawBones = currentDebugOptions.showBones
-          sc.renderer.skeletonDebugRenderer.drawRegionAttachments = currentDebugOptions.showSlots
-          sc.renderer.skeletonDebugRenderer.drawBoundingBoxes = false
-          sc.renderer.skeletonDebugRenderer.drawMeshHull = false
-          sc.renderer.skeletonDebugRenderer.drawMeshTriangles = false
-          sc.renderer.skeletonDebugRenderer.drawPaths = false
-          sc.renderer.skeletonDebugRenderer.drawSkeletonXY = false
-          sc.renderer.skeletonDebugRenderer.drawClipping = false
-          sc.renderer.drawSkeletonDebug(skeleton, premultipliedAlpha)
-        }
         if (currentDebugOptions.showAxes) {
           drawWorldAxes(sc)
         }
+        sc.renderer.drawSkeleton(skeleton, premultipliedAlpha)
+        if (hasSkeletonDebugEnabled()) {
+          sc.renderer.skeletonDebugRenderer.drawBones = currentDebugOptions.showBones
+          sc.renderer.skeletonDebugRenderer.drawRegionAttachments = currentDebugOptions.showRegions
+          sc.renderer.skeletonDebugRenderer.drawBoundingBoxes = currentDebugOptions.showBounds
+          sc.renderer.skeletonDebugRenderer.drawMeshHull = currentDebugOptions.showMeshHull
+          sc.renderer.skeletonDebugRenderer.drawMeshTriangles = currentDebugOptions.showMeshTriangles
+          sc.renderer.skeletonDebugRenderer.drawPaths = currentDebugOptions.showPaths
+          sc.renderer.skeletonDebugRenderer.drawSkeletonXY = false
+          sc.renderer.skeletonDebugRenderer.drawClipping = currentDebugOptions.showClipping
+          sc.renderer.drawSkeletonDebug(skeleton, premultipliedAlpha)
+        }
+        drawPointAttachments(sc)
         drawSelectionHighlight(sc)
         const frameDrawCall = sc.renderer.batcher.getDrawCalls()
         sc.renderer.end()
@@ -475,6 +499,38 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
         }
       }
 
+      const drawPointAttachments = (sc: any) => {
+        if (!currentDebugOptions.showPoints || !skeleton?.slots || !spine?.Vector2 || !spine?.PointAttachment) return
+
+        const pointColor = new spine.Color(0.95, 0.44, 0.2, 0.95)
+        const directionColor = new spine.Color(1, 0.82, 0.3, 0.95)
+        const worldPoint = new spine.Vector2()
+        const directionLength = 22
+        const arrowSize = 5
+
+        for (const slot of skeleton.slots) {
+          const attachment = slot?.attachment
+          if (!(attachment instanceof spine.PointAttachment) || !slot.bone) continue
+
+          attachment.computeWorldPosition(slot.bone, worldPoint)
+          const rotation = attachment.computeWorldRotation(slot.bone) * Math.PI / 180
+          const endX = worldPoint.x + Math.cos(rotation) * directionLength
+          const endY = worldPoint.y + Math.sin(rotation) * directionLength
+
+          sc.renderer.circle(false, worldPoint.x, worldPoint.y, 5, pointColor, 18)
+          sc.renderer.circle(true, worldPoint.x, worldPoint.y, 2.2, pointColor, 12)
+          sc.renderer.line(worldPoint.x, worldPoint.y, endX, endY, directionColor, directionColor)
+
+          const leftX = endX - Math.cos(rotation - Math.PI / 6) * arrowSize
+          const leftY = endY - Math.sin(rotation - Math.PI / 6) * arrowSize
+          const rightX = endX - Math.cos(rotation + Math.PI / 6) * arrowSize
+          const rightY = endY - Math.sin(rotation + Math.PI / 6) * arrowSize
+
+          sc.renderer.line(endX, endY, leftX, leftY, directionColor, directionColor)
+          sc.renderer.line(endX, endY, rightX, rightY, directionColor, directionColor)
+        }
+      }
+
       const drawWorldAxes = (sc: any) => {
         const camera = sc?.renderer?.camera
         if (!camera || !spine?.Vector3) return
@@ -517,6 +573,16 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
         )
         sc.renderer.circle(true, 0, 0, 3.5, originColor, 18)
       }
+
+      const hasSkeletonDebugEnabled = () => (
+        currentDebugOptions.showBones
+        || currentDebugOptions.showRegions
+        || currentDebugOptions.showBounds
+        || currentDebugOptions.showPaths
+        || currentDebugOptions.showClipping
+        || currentDebugOptions.showMeshHull
+        || currentDebugOptions.showMeshTriangles
+      )
 
       try {
         spineCanvas = new spine.SpineCanvas(input.canvas, {

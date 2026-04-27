@@ -37,8 +37,9 @@
               @file-selected="handleFileSelected"
               @animation-change="handleAnimationChange"
               @skin-change="handleSkinChange"
-              @show-axes-change="handleShowAxesChange"
+              @debug-option-change="handleDebugOptionChange"
               @premultiply-alpha-change="handlePremultipliedAlphaChange"
+              @texture-filtering-change="handleTextureFilteringChange"
               :animations="animations"
               :skins="skins"
               :current-animation="animationName"
@@ -51,8 +52,9 @@
               :runtime-version="runtimeVersion"
               :initial-runtime-version="initialRuntimeVersion"
               :fallback-used="fallbackUsed"
-              :show-axes="showAxes"
+              :debug-options="debugOptions"
               :premultiplied-alpha="premultipliedAlpha"
+              :texture-filtering="textureFiltering"
             />
           </div>
         </div>
@@ -70,14 +72,10 @@
           </button>
           <div v-show="isStructurePanelOpen" class="sidebar-panel-body">
             <StructurePanel
-              @show-bones-change="handleShowBonesChange"
-              @show-slots-change="handleShowSlotsChange"
               @bone-selected="handleBoneSelected"
               @slot-selected="handleSlotSelected"
               :structure="structure"
               :selection="selection"
-              :show-bones="showBones"
-              :show-slots="showSlots"
             />
           </div>
         </div>
@@ -119,11 +117,10 @@
         :skin-name="currentSkin"
         :is-playing="isPlaying"
         :playback-rate="playbackRate"
-        :show-axes="showAxes"
-        :show-bones="showBones"
-        :show-slots="showSlots"
+        :debug-options="debugOptions"
         :selection="selection"
         :premultiplied-alpha="premultipliedAlpha"
+        :texture-filtering="textureFiltering"
         @loaded="(data) => handleLoaded(data)"
         @time-update="(time, animDuration, frameDrawCall) => handleTimeUpdate(time, animDuration, frameDrawCall)"
         @runtime-event="(payload) => handleRuntimeEvent(payload)"
@@ -189,7 +186,8 @@ import ControlPanel from './components/ControlPanel.vue'
 import PlaybackOverlay from './components/PlaybackOverlay.vue'
 import SpineCanvas from './components/SpineCanvas.vue'
 import StructurePanel from './components/StructurePanel.vue'
-import type { SpineAnimationEventMarker, SpineAnimationEventPayload, SpineAnimationSummary } from './lib/spine/adapters'
+import { DEFAULT_SPINE_DEBUG_OPTIONS, DEFAULT_SPINE_TEXTURE_FILTERING } from './lib/spine/adapters'
+import type { SpineAnimationEventMarker, SpineAnimationEventPayload, SpineAnimationSummary, SpineDebugOptions, SpineTextureFiltering } from './lib/spine/adapters'
 import type { SpineSelectionState, SpineSkeletonStructure } from './lib/spine/skeletonStructure'
 import type { SpineDetectedVersion, SpineMajorVersion } from './lib/spine/versionDetection'
 
@@ -200,10 +198,9 @@ const animationName = ref('')
 const currentSkin = ref('')
 const isPlaying = ref(true)
 const playbackRate = ref(1)
-const showAxes = ref(true)
-const showBones = ref(false)
-const showSlots = ref(false)
+const debugOptions = ref<SpineDebugOptions>({ ...DEFAULT_SPINE_DEBUG_OPTIONS })
 const premultipliedAlpha = ref(true)
+const textureFiltering = ref<SpineTextureFiltering>(DEFAULT_SPINE_TEXTURE_FILTERING)
 const spineCanvasRef = ref<InstanceType<typeof SpineCanvas> | null>(null)
 const isControlPanelOpen = ref(true)
 const isStructurePanelOpen = ref(true)
@@ -339,20 +336,19 @@ const handleSeek = (time: number) => {
   spineCanvasRef.value?.seekTo(time)
 }
 
-const handleShowBonesChange = (value: boolean) => {
-  showBones.value = value
-}
-
-const handleShowAxesChange = (value: boolean) => {
-  showAxes.value = value
-}
-
-const handleShowSlotsChange = (value: boolean) => {
-  showSlots.value = value
+const handleDebugOptionChange = (key: keyof SpineDebugOptions, value: boolean) => {
+  debugOptions.value = {
+    ...debugOptions.value,
+    [key]: value
+  }
 }
 
 const handlePremultipliedAlphaChange = (value: boolean) => {
   premultipliedAlpha.value = value
+}
+
+const handleTextureFilteringChange = (value: SpineTextureFiltering) => {
+  textureFiltering.value = value
 }
 
 const handleBoneSelected = (boneName: string) => {

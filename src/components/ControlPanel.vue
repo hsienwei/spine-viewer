@@ -152,8 +152,8 @@
           <input
             type="checkbox"
             class="toggle-input"
-            :checked="props.showAxes !== false"
-            @change="emit('show-axes-change', ($event.target as HTMLInputElement).checked)"
+            :checked="resolvedDebugOptions.showAxes"
+            @change="emitDebugOptionChange('showAxes', $event)"
           />
           <span class="toggle-track">
             <span class="toggle-thumb"></span>
@@ -174,6 +174,37 @@
           </span>
         </span>
       </label>
+      <label class="filtering-row">
+        <span class="toggle-label-text">Filtering</span>
+        <span class="filtering-option">
+          <input
+            type="checkbox"
+            class="debug-option-input"
+            :checked="resolvedTextureFiltering !== 'nearest'"
+            @change="emit('texture-filtering-change', ($event.target as HTMLInputElement).checked ? 'linear' : 'nearest')"
+          />
+          <span class="debug-option-text">Linear</span>
+        </span>
+      </label>
+    </section>
+
+    <section v-if="runtimeVersion !== null" class="section">
+      <h3 class="section-title">Debug</h3>
+      <div class="debug-option-grid">
+        <label
+          v-for="option in debugOptionsList"
+          :key="option.key"
+          class="debug-option"
+        >
+          <input
+            type="checkbox"
+            class="debug-option-input"
+            :checked="resolvedDebugOptions[option.key]"
+            @change="emitDebugOptionChange(option.key, $event)"
+          />
+          <span class="debug-option-text">{{ option.label }}</span>
+        </label>
+      </div>
     </section>
 
     <!-- Version Info -->
@@ -203,12 +234,14 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { DEFAULT_SPINE_DEBUG_OPTIONS, DEFAULT_SPINE_TEXTURE_FILTERING } from '../lib/spine/adapters'
 import {
   analyzeSpineFiles,
   type SpineDetectedVersion,
   type SpineFileGroupCandidate,
   type SpineMajorVersion
 } from '../lib/spine/versionDetection'
+import type { SpineDebugOptions, SpineTextureFiltering } from '../lib/spine/adapters'
 import DriveBrowser from './DriveBrowser.vue'
 
 interface FileData {
@@ -230,17 +263,30 @@ const props = defineProps<{
   runtimeVersion?: SpineMajorVersion | null
   initialRuntimeVersion?: SpineMajorVersion | null
   fallbackUsed?: boolean
-  showAxes?: boolean
+  debugOptions?: Partial<SpineDebugOptions>
   premultipliedAlpha?: boolean
+  textureFiltering?: SpineTextureFiltering
 }>()
 
 const emit = defineEmits<{
   'file-selected': [payload: { files: File[] }]
   'animation-change': [name: string]
   'skin-change': [name: string]
-  'show-axes-change': [value: boolean]
+  'debug-option-change': [key: keyof SpineDebugOptions, value: boolean]
   'premultiply-alpha-change': [value: boolean]
+  'texture-filtering-change': [value: SpineTextureFiltering]
 }>()
+
+const debugOptionsList: Array<{ key: Exclude<keyof SpineDebugOptions, 'showAxes'>, label: string }> = [
+  { key: 'showBones', label: 'Bones' },
+  { key: 'showRegions', label: 'Regions' },
+  { key: 'showBounds', label: 'Bounds' },
+  { key: 'showPaths', label: 'Paths' },
+  { key: 'showPoints', label: 'Points' },
+  { key: 'showClipping', label: 'Clipping' },
+  { key: 'showMeshHull', label: 'Mesh hull' },
+  { key: 'showMeshTriangles', label: 'Triangles' }
+]
 
 const showDriveBrowser = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
@@ -252,6 +298,15 @@ const isAnalyzingFiles = ref(false)
 const localAnimation = ref('')
 const localSkin = ref('')
 let fileAnalysisRequestId = 0
+
+const resolvedDebugOptions = computed<SpineDebugOptions>(() => ({
+  ...DEFAULT_SPINE_DEBUG_OPTIONS,
+  ...props.debugOptions
+}))
+
+const resolvedTextureFiltering = computed<SpineTextureFiltering>(() => {
+  return props.textureFiltering ?? DEFAULT_SPINE_TEXTURE_FILTERING
+})
 
 watch(() => props.currentAnimation, (val) => {
   if (val) localAnimation.value = val
@@ -363,6 +418,10 @@ const fallbackStatusLabel = computed(() => {
   }
   return 'used'
 })
+
+const emitDebugOptionChange = (key: keyof SpineDebugOptions, event: Event) => {
+  emit('debug-option-change', key, (event.target as HTMLInputElement).checked)
+}
 </script>
 
 <style scoped>
@@ -752,6 +811,45 @@ const fallbackStatusLabel = computed(() => {
 .toggle-input:checked + .toggle-track .toggle-thumb {
   transform: translateX(15px);
   background: var(--accent);
+}
+
+.debug-option-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.debug-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.debug-option-input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.debug-option-text {
+  line-height: 1.2;
+}
+
+.filtering-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.filtering-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
 }
 
 /* Version */

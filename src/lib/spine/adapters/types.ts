@@ -44,6 +44,7 @@ export interface SpineSessionCreateInput {
   animationName?: string
   skinName?: string
   premultipliedAlpha?: boolean
+  textureFiltering?: SpineTextureFiltering
   onLoaded: (data: {
     animations: string[]
     animationSummaries: SpineAnimationSummary[]
@@ -67,8 +68,30 @@ export interface SpineSessionCreateInput {
 export interface SpineDebugOptions {
   showAxes: boolean
   showBones: boolean
-  showSlots: boolean
+  showRegions: boolean
+  showBounds: boolean
+  showPaths: boolean
+  showPoints: boolean
+  showClipping: boolean
+  showMeshHull: boolean
+  showMeshTriangles: boolean
 }
+
+export const DEFAULT_SPINE_DEBUG_OPTIONS: SpineDebugOptions = {
+  showAxes: true,
+  showBones: false,
+  showRegions: false,
+  showBounds: false,
+  showPaths: false,
+  showPoints: false,
+  showClipping: false,
+  showMeshHull: false,
+  showMeshTriangles: false
+}
+
+export type SpineTextureFiltering = 'linear' | 'nearest'
+
+export const DEFAULT_SPINE_TEXTURE_FILTERING: SpineTextureFiltering = 'linear'
 
 export interface SpineRuntimeSession {
   version: SpineMajorVersion
@@ -76,6 +99,7 @@ export interface SpineRuntimeSession {
   setSkin(name: string): void
   setPlayback(enabled: boolean, playbackRate: number): void
   setDebugOptions(options: SpineDebugOptions): void
+  setTextureFiltering(filtering: SpineTextureFiltering): void
   setSelection(selection: SpineSelectionState): void
   setPremultipliedAlpha(value: boolean): void
   seekTo(time: number): void

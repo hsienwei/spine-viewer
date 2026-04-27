@@ -33,10 +33,10 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import { Spine3RuntimeAdapter, Spine4RuntimeAdapter } from '../lib/spine/adapters'
+import { DEFAULT_SPINE_DEBUG_OPTIONS, DEFAULT_SPINE_TEXTURE_FILTERING, Spine3RuntimeAdapter, Spine4RuntimeAdapter } from '../lib/spine/adapters'
 import { detectSpineVersion } from '../lib/spine/versionDetection'
 import type { SpineSelectionState, SpineSkeletonStructure } from '../lib/spine/skeletonStructure'
-import type { SpineAnimationEventPayload, SpineAnimationSummary, SpineRuntimeSession } from '../lib/spine/adapters'
+import type { SpineAnimationEventPayload, SpineAnimationSummary, SpineDebugOptions, SpineRuntimeSession, SpineTextureFiltering } from '../lib/spine/adapters'
 import type { SpineDetectedVersion, SpineMajorVersion } from '../lib/spine/versionDetection'
 
 const props = defineProps<{
@@ -45,11 +45,10 @@ const props = defineProps<{
   skinName?: string
   isPlaying?: boolean
   playbackRate?: number
-  showAxes?: boolean
-  showBones?: boolean
-  showSlots?: boolean
+  debugOptions?: Partial<SpineDebugOptions>
   selection?: SpineSelectionState
   premultipliedAlpha?: boolean
+  textureFiltering?: SpineTextureFiltering
 }>()
 
 const emit = defineEmits<{
@@ -127,6 +126,15 @@ const zoomPercent = computed(() => `${Math.round(viewScale.value * 100)}%`)
 const offsetXPercent = computed(() => formatOffsetPercent(panOffset.value.x, currentBounds.value.width))
 const offsetYPercent = computed(() => formatOffsetPercent(panOffset.value.y, currentBounds.value.height))
 
+const getDebugOptions = (): SpineDebugOptions => ({
+  ...DEFAULT_SPINE_DEBUG_OPTIONS,
+  ...props.debugOptions
+})
+
+const getTextureFiltering = (): SpineTextureFiltering => {
+  return props.textureFiltering ?? DEFAULT_SPINE_TEXTURE_FILTERING
+}
+
 const setLoadError = (message: string) => {
   errorMsg.value = message
   isViewerReady.value = false
@@ -152,11 +160,8 @@ const syncSessionState = () => {
   if (props.skinName) {
     activeSession.setSkin(props.skinName)
   }
-  activeSession.setDebugOptions({
-    showAxes: props.showAxes !== false,
-    showBones: !!props.showBones,
-    showSlots: !!props.showSlots
-  })
+  activeSession.setDebugOptions(getDebugOptions())
+  activeSession.setTextureFiltering(getTextureFiltering())
   activeSession.setSelection(props.selection || { boneName: null, slotName: null })
   activeSession.setPremultipliedAlpha(props.premultipliedAlpha ?? true)
   viewScale.value = activeSession.getViewScale()
@@ -230,10 +235,11 @@ const loadSpine = async () => {
         const session = await runtimeAdapters[version].createSession({
           canvas: canvasRef.value,
           sourceFiles: detection.sourceFiles,
-          animationName: props.animationName,
-          skinName: props.skinName,
-          premultipliedAlpha: props.premultipliedAlpha ?? true,
-          onLoaded: (data) => {
+            animationName: props.animationName,
+            skinName: props.skinName,
+            premultipliedAlpha: props.premultipliedAlpha ?? true,
+            textureFiltering: getTextureFiltering(),
+            onLoaded: (data) => {
             if (requestId !== loadRequestId) return
             loaded = true
             isViewerReady.value = true
@@ -327,13 +333,13 @@ watch(() => props.premultipliedAlpha, (value) => {
   activeSession?.setPremultipliedAlpha(value ?? true)
 })
 
-watch([() => props.showAxes, () => props.showBones, () => props.showSlots], () => {
-  activeSession?.setDebugOptions({
-    showAxes: props.showAxes !== false,
-    showBones: !!props.showBones,
-    showSlots: !!props.showSlots
-  })
+watch(() => props.textureFiltering, (value) => {
+  activeSession?.setTextureFiltering(value ?? DEFAULT_SPINE_TEXTURE_FILTERING)
 })
+
+watch(() => props.debugOptions, () => {
+  activeSession?.setDebugOptions(getDebugOptions())
+}, { deep: true })
 
 watch(() => props.selection, (selection) => {
   activeSession?.setSelection(selection || { boneName: null, slotName: null })
