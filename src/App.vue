@@ -25,6 +25,24 @@
           <button
             type="button"
             class="sidebar-panel-header"
+            @click="isLoadFilesPanelOpen = !isLoadFilesPanelOpen"
+          >
+            <span>Load Files</span>
+            <svg class="panel-chevron" :class="{ open: isLoadFilesPanelOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div v-show="isLoadFilesPanelOpen" class="sidebar-panel-body">
+            <LoadFilesPanel
+              @file-selected="handleFileSelected"
+            />
+          </div>
+        </div>
+
+        <div v-if="animations.length > 0" class="sidebar-panel">
+          <button
+            type="button"
+            class="sidebar-panel-header"
             @click="isControlPanelOpen = !isControlPanelOpen"
           >
             <span>Controls</span>
@@ -34,7 +52,6 @@
           </button>
           <div v-show="isControlPanelOpen" class="sidebar-panel-body">
             <ControlPanel
-              @file-selected="handleFileSelected"
               @animation-change="handleAnimationChange"
               @skin-change="handleSkinChange"
               @debug-option-change="handleDebugOptionChange"
@@ -183,6 +200,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import packageJson from '../package.json'
 import ControlPanel from './components/ControlPanel.vue'
+import LoadFilesPanel from './components/LoadFilesPanel.vue'
 import PlaybackOverlay from './components/PlaybackOverlay.vue'
 import SpineCanvas from './components/SpineCanvas.vue'
 import StructurePanel from './components/StructurePanel.vue'
@@ -202,6 +220,7 @@ const debugOptions = ref<SpineDebugOptions>({ ...DEFAULT_SPINE_DEBUG_OPTIONS })
 const premultipliedAlpha = ref(true)
 const textureFiltering = ref<SpineTextureFiltering>(DEFAULT_SPINE_TEXTURE_FILTERING)
 const spineCanvasRef = ref<InstanceType<typeof SpineCanvas> | null>(null)
+const isLoadFilesPanelOpen = ref(true)
 const isControlPanelOpen = ref(true)
 const isStructurePanelOpen = ref(true)
 const isInfoOpen = ref(false)
