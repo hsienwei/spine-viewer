@@ -52,14 +52,14 @@
           </button>
           <div v-show="isControlPanelOpen" class="sidebar-panel-body">
             <ControlPanel
-              @animation-change="handleAnimationChange"
+              @tracks-change="handleTracksChange"
               @skin-change="handleSkinChange"
               @debug-option-change="handleDebugOptionChange"
               @premultiply-alpha-change="handlePremultipliedAlphaChange"
               @texture-filtering-change="handleTextureFilteringChange"
               :animations="animations"
               :skins="skins"
-              :current-animation="animationName"
+              :tracks="animationTracks"
               :current-skin="currentSkin"
               :current-time="currentTime"
               :duration="duration"
@@ -131,6 +131,7 @@
         ref="spineCanvasRef"
         :files="sourceFiles"
         :animation-name="animationName"
+        :animation-tracks="animationTracks"
         :skin-name="currentSkin"
         :is-playing="isPlaying"
         :playback-rate="playbackRate"
@@ -205,7 +206,7 @@ import PlaybackOverlay from './components/PlaybackOverlay.vue'
 import SpineCanvas from './components/SpineCanvas.vue'
 import StructurePanel from './components/StructurePanel.vue'
 import { DEFAULT_SPINE_DEBUG_OPTIONS, DEFAULT_SPINE_TEXTURE_FILTERING } from './lib/spine/adapters'
-import type { SpineAnimationEventMarker, SpineAnimationEventPayload, SpineAnimationSummary, SpineDebugOptions, SpineTextureFiltering } from './lib/spine/adapters'
+import type { SpineAnimationEventMarker, SpineAnimationEventPayload, SpineAnimationSummary, SpineDebugOptions, SpineTextureFiltering, SpineTrackEntry } from './lib/spine/adapters'
 import type { SpineSelectionState, SpineSkeletonStructure } from './lib/spine/skeletonStructure'
 import type { SpineDetectedVersion, SpineMajorVersion } from './lib/spine/versionDetection'
 
@@ -213,6 +214,7 @@ const appVersion = packageJson.version
 
 const sourceFiles = ref<File[]>([])
 const animationName = ref('')
+const animationTracks = ref<SpineTrackEntry[]>([])
 const currentSkin = ref('')
 const isPlaying = ref(true)
 const playbackRate = ref(1)
@@ -310,6 +312,7 @@ const handleFileSelected = (payload: { files: File[] }) => {
   sourceFiles.value = payload.files
   animations.value = []
   animationName.value = ''
+  animationTracks.value = []
   skins.value = []
   currentSkin.value = ''
   animationSummaries.value = []
@@ -331,11 +334,36 @@ const clearRuntimeNotifications = () => {
   runtimeNotifications.value = []
 }
 
-const handleAnimationChange = (name: string) => {
-  animationName.value = name
+const normalizeTracks = (tracks: SpineTrackEntry[]) => {
+  return tracks
+    .filter(track => Number.isInteger(track.trackIndex) && track.trackIndex >= 0)
+    .map(track => ({
+      trackIndex: track.trackIndex,
+      animationName: track.animationName || '',
+      loop: track.loop !== false,
+      mixDuration: Math.max(0, track.mixDuration || 0)
+    }))
+    .sort((a, b) => a.trackIndex - b.trackIndex)
+    .map((track, index) => ({
+      ...track,
+      trackIndex: index
+    }))
+}
+
+const syncPrimaryTrackState = (tracks: SpineTrackEntry[]) => {
+  const primaryTrack = tracks.find(track => !!track.animationName)
+  animationName.value = primaryTrack?.animationName || ''
   currentTime.value = 0
-  duration.value = animationSummaries.value.find(animation => animation.name === name)?.duration || duration.value
+  duration.value = primaryTrack?.animationName
+    ? (animationSummaries.value.find(animation => animation.name === primaryTrack.animationName)?.duration || duration.value)
+    : 0
   clearRuntimeNotifications()
+}
+
+const handleTracksChange = (tracks: SpineTrackEntry[]) => {
+  const normalizedTracks = normalizeTracks(tracks)
+  animationTracks.value = normalizedTracks
+  syncPrimaryTrackState(normalizedTracks)
 }
 
 const handleSkinChange = (name: string) => {
@@ -406,7 +434,17 @@ const handleLoaded = (data: {
   selection.value = { boneName: null, slotName: null }
   clearRuntimeNotifications()
   if (data.animations.length > 0) {
-    animationName.value = data.animations[0]
+    const initialTrack = {
+      trackIndex: 0,
+      animationName: data.animations[0],
+      loop: true,
+      mixDuration: 0
+    }
+    animationTracks.value = [initialTrack]
+    animationName.value = initialTrack.animationName
+  } else {
+    animationTracks.value = []
+    animationName.value = ''
   }
   duration.value = data.duration || data.animationSummaries[0]?.duration || 2.5
   drawCall.value = data.drawCall

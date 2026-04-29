@@ -9,7 +9,8 @@ import type {
   SpineRuntimeAdapter,
   SpineRuntimeSession,
   SpineSessionCreateInput,
-  SpineTextureFiltering
+  SpineTextureFiltering,
+  SpineTrackEntry
 } from './types'
 
 let spine4ModulePromise: Promise<any> | null = null
@@ -80,6 +81,7 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
       let fittedCameraCenter = { x: 0, y: 0 }
       let fittedCameraZoom = 1
       let needsCameraFit = true
+      let appliedTrackEntries: SpineTrackEntry[] = []
 
       const getNormalizedTrackTime = (entry: any) => {
         if (typeof entry?.trackTime !== 'number') return null
@@ -179,6 +181,54 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
 
       const getCurrentTrack = () => animationState?.getCurrent(0) || null
 
+      const applyTrackAnimation = (track: SpineTrackEntry) => {
+        if (!animationState) return
+
+        const entry = animationState.setAnimation(track.trackIndex, track.animationName, track.loop)
+        if (entry && typeof track.mixDuration === 'number') {
+          entry.mixDuration = Math.max(0, track.mixDuration)
+        }
+      }
+
+      const syncTracks = (tracks: SpineTrackEntry[]) => {
+        if (!animationState) return
+
+        const nextTracks = [...tracks]
+          .filter(track => track.trackIndex >= 0 && !!track.animationName)
+          .sort((a, b) => a.trackIndex - b.trackIndex)
+
+        const maxTrackIndex = Math.max(
+          -1,
+          ...appliedTrackEntries.map(track => track.trackIndex),
+          ...nextTracks.map(track => track.trackIndex)
+        )
+
+        for (let trackIndex = 0; trackIndex <= maxTrackIndex; trackIndex += 1) {
+          const nextTrack = nextTracks.find(track => track.trackIndex === trackIndex)
+          const prevTrack = appliedTrackEntries.find(track => track.trackIndex === trackIndex)
+
+          if (!nextTrack) {
+            if (prevTrack && typeof animationState.clearTrack === 'function') {
+              animationState.clearTrack(trackIndex)
+            }
+            continue
+          }
+
+          if (
+            prevTrack
+            && prevTrack.animationName === nextTrack.animationName
+            && prevTrack.loop === nextTrack.loop
+            && prevTrack.mixDuration === nextTrack.mixDuration
+          ) {
+            continue
+          }
+
+          applyTrackAnimation(nextTrack)
+        }
+
+        appliedTrackEntries = nextTracks.map(track => ({ ...track }))
+      }
+
       const updateSkeletonWorldTransform = () => {
         skeleton?.updateWorldTransform(spine.Physics.update)
       }
@@ -232,8 +282,13 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
         version: 4,
         setAnimation: (name: string, loop: boolean) => {
           if (animationState && name) {
-            animationState.setAnimation(0, name, loop)
+            const track = { trackIndex: 0, animationName: name, loop, mixDuration: 0 }
+            applyTrackAnimation(track)
+            appliedTrackEntries = [track]
           }
+        },
+        setTracks: (tracks: SpineTrackEntry[]) => {
+          syncTracks(tracks)
         },
         setSkin: (name: string) => {
           applySkin(name)
@@ -364,12 +419,20 @@ export class Spine4RuntimeAdapter implements SpineRuntimeAdapter {
 
           const animationSummaries = extractAnimationSummaries(skeletonData.animations, spine)
           const animations = animationSummaries.map(animation => animation.name)
+          const initialTracks = (input.animationTracks?.length
+            ? input.animationTracks.filter(track => animations.includes(track.animationName))
+            : []
+          )
           const firstAnim = (input.animationName && animations.includes(input.animationName))
             ? input.animationName
-            : animations[0]
+            : initialTracks[0]?.animationName || animations[0]
 
-          if (firstAnim && animationState) {
-            animationState.setAnimation(0, firstAnim, true)
+          if (initialTracks.length > 0) {
+            syncTracks(initialTracks)
+          } else if (firstAnim && animationState) {
+            const track = { trackIndex: 0, animationName: firstAnim, loop: true, mixDuration: 0 }
+            applyTrackAnimation(track)
+            appliedTrackEntries = [track]
           }
 
           input.onLoaded({

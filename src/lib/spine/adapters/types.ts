@@ -38,10 +38,18 @@ export interface SpineAnimationSummary {
   eventMarkers: SpineAnimationEventMarker[]
 }
 
+export interface SpineTrackEntry {
+  trackIndex: number
+  animationName: string
+  loop: boolean
+  mixDuration: number
+}
+
 export interface SpineSessionCreateInput {
   canvas: HTMLCanvasElement
   sourceFiles: SpineSourceFiles
   animationName?: string
+  animationTracks?: SpineTrackEntry[]
   skinName?: string
   premultipliedAlpha?: boolean
   textureFiltering?: SpineTextureFiltering
@@ -96,6 +104,7 @@ export const DEFAULT_SPINE_TEXTURE_FILTERING: SpineTextureFiltering = 'linear'
 export interface SpineRuntimeSession {
   version: SpineMajorVersion
   setAnimation(name: string, loop: boolean): void
+  setTracks(tracks: SpineTrackEntry[]): void
   setSkin(name: string): void
   setPlayback(enabled: boolean, playbackRate: number): void
   setDebugOptions(options: SpineDebugOptions): void

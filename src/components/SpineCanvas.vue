@@ -36,12 +36,13 @@ import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { DEFAULT_SPINE_DEBUG_OPTIONS, DEFAULT_SPINE_TEXTURE_FILTERING, Spine3RuntimeAdapter, Spine4RuntimeAdapter } from '../lib/spine/adapters'
 import { detectSpineVersion } from '../lib/spine/versionDetection'
 import type { SpineSelectionState, SpineSkeletonStructure } from '../lib/spine/skeletonStructure'
-import type { SpineAnimationEventPayload, SpineAnimationSummary, SpineDebugOptions, SpineRuntimeSession, SpineTextureFiltering } from '../lib/spine/adapters'
+import type { SpineAnimationEventPayload, SpineAnimationSummary, SpineDebugOptions, SpineRuntimeSession, SpineTextureFiltering, SpineTrackEntry } from '../lib/spine/adapters'
 import type { SpineDetectedVersion, SpineMajorVersion } from '../lib/spine/versionDetection'
 
 const props = defineProps<{
   files?: File[]
   animationName?: string
+  animationTracks?: SpineTrackEntry[]
   skinName?: string
   isPlaying?: boolean
   playbackRate?: number
@@ -156,6 +157,7 @@ const disposeCurrentSession = () => {
 const syncSessionState = () => {
   if (!activeSession) return
 
+  activeSession.setTracks(props.animationTracks || [])
   activeSession.setPlayback(props.isPlaying !== false, props.playbackRate || 1)
   if (props.skinName) {
     activeSession.setSkin(props.skinName)
@@ -235,11 +237,12 @@ const loadSpine = async () => {
         const session = await runtimeAdapters[version].createSession({
           canvas: canvasRef.value,
           sourceFiles: detection.sourceFiles,
-            animationName: props.animationName,
-            skinName: props.skinName,
-            premultipliedAlpha: props.premultipliedAlpha ?? true,
-            textureFiltering: getTextureFiltering(),
-            onLoaded: (data) => {
+          animationName: props.animationName,
+          animationTracks: props.animationTracks,
+          skinName: props.skinName,
+          premultipliedAlpha: props.premultipliedAlpha ?? true,
+          textureFiltering: getTextureFiltering(),
+          onLoaded: (data) => {
             if (requestId !== loadRequestId) return
             loaded = true
             isViewerReady.value = true
@@ -313,8 +316,12 @@ watch(() => props.files, (files) => {
   errorMsg.value = ''
 }, { deep: false })
 
+watch(() => props.animationTracks, (tracks) => {
+  activeSession?.setTracks(tracks || [])
+}, { deep: true })
+
 watch(() => props.animationName, (animName) => {
-  if (animName && activeSession) {
+  if (animName && activeSession && !(props.animationTracks?.length)) {
     activeSession.setAnimation(animName, true)
   }
 })

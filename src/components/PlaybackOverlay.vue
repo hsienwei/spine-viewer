@@ -145,6 +145,7 @@ const runtimeNotificationItems = computed(() => {
   const activeAnimationName = props.animationName || null
 
   return (props.runtimeNotifications || []).filter(notification => {
+    if (notification.trackIndex !== 0) return false
     if (!activeAnimationName) return notification.animationName === null
     return notification.animationName === activeAnimationName
   })

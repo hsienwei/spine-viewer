@@ -1,14 +1,67 @@
 <template>
   <div class="control-panel">
     <section v-if="animations && animations.length > 0" class="section">
-      <h3 class="section-title">Load Animations</h3>
-      <div class="select-wrapper">
-        <select v-model="localAnimation" class="select-input" @change="emitAnimationChange">
-          <option v-for="anim in animations" :key="anim" :value="anim">{{ anim }}</option>
-        </select>
-        <svg class="select-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+      <div class="section-heading">
+        <h3 class="section-title">Animation Tracks</h3>
+        <button type="button" class="mini-action-btn" @click="addTrack">Add</button>
+      </div>
+      <div class="track-list">
+        <div v-for="track in localTracks" :key="track.trackIndex" class="track-card">
+          <div class="track-card-header">
+            <span class="track-chip">Track {{ track.trackIndex }}</span>
+            <div class="track-card-actions">
+              <button
+                type="button"
+                class="mini-icon-btn"
+                @click="clearTrack(track.trackIndex)"
+              >
+                Clear
+              </button>
+              <button
+                v-if="localTracks.length > 1"
+                type="button"
+                class="mini-icon-btn"
+                @click="removeTrack(track.trackIndex)"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+          <div class="select-wrapper">
+            <select
+              :value="track.animationName"
+              class="select-input"
+              @change="updateTrackAnimation(track.trackIndex, ($event.target as HTMLSelectElement).value)"
+            >
+              <option value="">None</option>
+              <option v-for="anim in animations" :key="anim" :value="anim">{{ anim }}</option>
+            </select>
+            <svg class="select-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <label class="track-loop-toggle">
+            <input
+              type="checkbox"
+              class="debug-option-input"
+              :checked="track.loop"
+              @change="updateTrackLoop(track.trackIndex, ($event.target as HTMLInputElement).checked)"
+            />
+            <span class="track-loop-label">Loop</span>
+          </label>
+          <label class="track-mix-field">
+            <span class="track-mix-label">Mix</span>
+            <input
+              type="number"
+              min="0"
+              step="0.05"
+              class="track-mix-input"
+              :value="track.mixDuration"
+              @change="updateTrackMixDuration(track.trackIndex, ($event.target as HTMLInputElement).value)"
+            />
+            <span class="track-mix-unit">s</span>
+          </label>
+        </div>
       </div>
     </section>
 
@@ -124,12 +177,12 @@
 import { computed, ref, watch } from 'vue'
 import { DEFAULT_SPINE_DEBUG_OPTIONS, DEFAULT_SPINE_TEXTURE_FILTERING } from '../lib/spine/adapters'
 import { type SpineDetectedVersion, type SpineMajorVersion } from '../lib/spine/versionDetection'
-import type { SpineDebugOptions, SpineTextureFiltering } from '../lib/spine/adapters'
+import type { SpineDebugOptions, SpineTextureFiltering, SpineTrackEntry } from '../lib/spine/adapters'
 
 const props = defineProps<{
   animations?: string[]
   skins?: string[]
-  currentAnimation?: string
+  tracks?: SpineTrackEntry[]
   currentSkin?: string
   currentTime?: number
   duration?: number
@@ -145,7 +198,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'animation-change': [name: string]
+  'tracks-change': [tracks: SpineTrackEntry[]]
   'skin-change': [name: string]
   'debug-option-change': [key: keyof SpineDebugOptions, value: boolean]
   'premultiply-alpha-change': [value: boolean]
@@ -163,13 +216,40 @@ const debugOptionsList: Array<{ key: Exclude<keyof SpineDebugOptions, 'showAxes'
   { key: 'showMeshTriangles', label: 'Triangles' }
 ]
 
-const localAnimation = ref('')
 const localSkin = ref('')
+const localTracks = ref<SpineTrackEntry[]>([])
 
 const resolveSelectedValue = (options: string[] | undefined, value: string | undefined) => {
   if (!options?.length) return ''
   if (value && options.includes(value)) return value
   return options[0]
+}
+
+const normalizeTracks = (tracks: SpineTrackEntry[] | undefined, animations: string[] | undefined) => {
+  const animationOptions = animations || []
+  const sanitized = (tracks || [])
+    .filter(track => track.trackIndex >= 0)
+    .map(track => ({
+      trackIndex: track.trackIndex,
+      animationName: track.animationName && animationOptions.includes(track.animationName)
+        ? track.animationName
+        : (track.animationName ? resolveSelectedValue(animationOptions, track.animationName) : ''),
+      loop: track.loop !== false,
+      mixDuration: Math.max(0, track.mixDuration || 0)
+    }))
+    .sort((a, b) => a.trackIndex - b.trackIndex)
+
+  if (sanitized.length > 0) {
+    return sanitized.map((track, index) => ({
+      ...track,
+      trackIndex: index
+    }))
+  }
+
+  const firstAnimation = resolveSelectedValue(animationOptions, undefined)
+  return firstAnimation
+    ? [{ trackIndex: 0, animationName: firstAnimation, loop: true, mixDuration: 0 }]
+    : []
 }
 
 const resolvedDebugOptions = computed<SpineDebugOptions>(() => ({
@@ -182,11 +262,11 @@ const resolvedTextureFiltering = computed<SpineTextureFiltering>(() => {
 })
 
 watch(
-  [() => props.animations, () => props.currentAnimation],
-  ([animations, currentAnimation]) => {
-    localAnimation.value = resolveSelectedValue(animations, currentAnimation)
+  [() => props.animations, () => props.tracks],
+  ([animations, tracks]) => {
+    localTracks.value = normalizeTracks(tracks, animations)
   },
-  { immediate: true }
+  { immediate: true, deep: true }
 )
 
 watch(
@@ -197,10 +277,66 @@ watch(
   { immediate: true }
 )
 
-const emitAnimationChange = () => {
-  if (localAnimation.value) {
-    emit('animation-change', localAnimation.value)
-  }
+const emitTracksChange = (tracks: SpineTrackEntry[]) => {
+  emit('tracks-change', tracks.map(track => ({ ...track })))
+}
+
+const updateTrackAnimation = (trackIndex: number, animationName: string) => {
+  localTracks.value = localTracks.value.map(track => (
+    track.trackIndex === trackIndex
+      ? { ...track, animationName }
+      : track
+  ))
+  emitTracksChange(localTracks.value)
+}
+
+const updateTrackLoop = (trackIndex: number, loop: boolean) => {
+  localTracks.value = localTracks.value.map(track => (
+    track.trackIndex === trackIndex
+      ? { ...track, loop }
+      : track
+  ))
+  emitTracksChange(localTracks.value)
+}
+
+const updateTrackMixDuration = (trackIndex: number, rawValue: string) => {
+  const mixDuration = Math.max(0, Number.parseFloat(rawValue) || 0)
+  localTracks.value = localTracks.value.map(track => (
+    track.trackIndex === trackIndex
+      ? { ...track, mixDuration }
+      : track
+  ))
+  emitTracksChange(localTracks.value)
+}
+
+const addTrack = () => {
+  const nextAnimation = resolveSelectedValue(props.animations, undefined)
+  if (!nextAnimation) return
+
+  localTracks.value = [
+    ...localTracks.value,
+    { trackIndex: localTracks.value.length, animationName: nextAnimation, loop: true, mixDuration: 0 }
+  ]
+  emitTracksChange(localTracks.value)
+}
+
+const removeTrack = (trackIndex: number) => {
+  localTracks.value = localTracks.value
+    .filter(track => track.trackIndex !== trackIndex)
+    .map((track, index) => ({
+      ...track,
+      trackIndex: index
+    }))
+  emitTracksChange(localTracks.value)
+}
+
+const clearTrack = (trackIndex: number) => {
+  localTracks.value = localTracks.value.map(track => (
+    track.trackIndex === trackIndex
+      ? { ...track, animationName: '' }
+      : track
+  ))
+  emitTracksChange(localTracks.value)
 }
 
 const emitSkinChange = () => {
@@ -242,6 +378,13 @@ const emitDebugOptionChange = (key: keyof SpineDebugOptions, event: Event) => {
   gap: 10px;
 }
 
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .section-title {
   font-family: var(--font-ui);
   font-size: 10px;
@@ -249,6 +392,110 @@ const emitDebugOptionChange = (key: keyof SpineDebugOptions, event: Event) => {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.14em;
+}
+
+.mini-action-btn,
+.mini-icon-btn {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition), background var(--transition);
+}
+
+.mini-action-btn {
+  padding: 5px 8px;
+}
+
+.mini-icon-btn {
+  padding: 4px 7px;
+}
+
+.mini-action-btn:hover,
+.mini-icon-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.track-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.track-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.track-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.track-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.track-chip {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.track-loop-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.track-loop-label {
+  line-height: 1.2;
+}
+
+.track-mix-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.track-mix-label,
+.track-mix-unit {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.track-mix-input {
+  width: 78px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.track-mix-input:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 .select-wrapper {

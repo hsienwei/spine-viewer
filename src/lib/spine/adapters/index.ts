@@ -11,5 +11,6 @@ export type {
   SpineAnimationEventPayload,
   SpineAnimationMarkerEvent,
   SpineAnimationEventMarker,
-  SpineAnimationSummary
+  SpineAnimationSummary,
+  SpineTrackEntry
 } from './types'
