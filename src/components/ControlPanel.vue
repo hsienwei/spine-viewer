@@ -125,14 +125,6 @@
       <h3 class="section-title">Info</h3>
       <div class="info-grid">
         <div class="info-row">
-          <span class="info-label">Animation</span>
-          <span class="info-value">{{ currentAnimation || '—' }}</span>
-        </div>
-        <div v-if="skins && skins.length > 0" class="info-row">
-          <span class="info-label">Skin</span>
-          <span class="info-value">{{ currentSkin || '--' }}</span>
-        </div>
-        <div class="info-row">
           <span class="info-label">Draw Calls</span>
           <span class="info-value mono">{{ drawCall || 0 }}</span>
         </div>
@@ -174,16 +166,18 @@
           </span>
         </span>
       </label>
-      <label class="filtering-row">
+      <label class="toggle-row">
         <span class="toggle-label-text">Filtering</span>
-        <span class="filtering-option">
+        <span class="toggle-switch">
           <input
             type="checkbox"
-            class="debug-option-input"
+            class="toggle-input"
             :checked="resolvedTextureFiltering !== 'nearest'"
             @change="emit('texture-filtering-change', ($event.target as HTMLInputElement).checked ? 'linear' : 'nearest')"
           />
-          <span class="debug-option-text">Linear</span>
+          <span class="toggle-track">
+            <span class="toggle-thumb"></span>
+          </span>
         </span>
       </label>
     </section>
@@ -836,20 +830,6 @@ const emitDebugOptionChange = (key: keyof SpineDebugOptions, event: Event) => {
 
 .debug-option-text {
   line-height: 1.2;
-}
-
-.filtering-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.filtering-option {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-secondary);
 }
 
 /* Version */
