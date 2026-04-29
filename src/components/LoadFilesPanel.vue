@@ -129,7 +129,14 @@ const selectedGroup = computed(() => {
 
 const canLoad = computed(() => !!selectedGroup.value?.isLoadable)
 
+const resetFileInput = () => {
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
+}
+
 const triggerFileInput = () => {
+  resetFileInput()
   fileInputRef.value?.click()
 }
 
@@ -142,6 +149,7 @@ const handleFileSelect = (event: Event) => {
   if (target.files) {
     processFiles(Array.from(target.files))
   }
+  target.value = ''
 }
 
 const processFiles = async (files: File[]) => {
@@ -190,6 +198,7 @@ const loadFiles = () => {
 
 const handleDriveConfirm = (files: File[]) => {
   showDriveBrowser.value = false
+  resetFileInput()
   if (files.length > 0) processFiles(files)
 }
 </script>
