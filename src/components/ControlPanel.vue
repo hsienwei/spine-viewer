@@ -40,27 +40,30 @@
               <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
-          <label class="track-loop-toggle">
-            <input
-              type="checkbox"
-              class="debug-option-input"
-              :checked="track.loop"
-              @change="updateTrackLoop(track.trackIndex, ($event.target as HTMLInputElement).checked)"
-            />
-            <span class="track-loop-label">Loop</span>
-          </label>
-          <label class="track-mix-field">
-            <span class="track-mix-label">Mix</span>
-            <input
-              type="number"
-              min="0"
-              step="0.05"
-              class="track-mix-input"
-              :value="track.mixDuration"
-              @change="updateTrackMixDuration(track.trackIndex, ($event.target as HTMLInputElement).value)"
-            />
-            <span class="track-mix-unit">s</span>
-          </label>
+          <div class="track-settings-row">
+            <label class="track-loop-toggle">
+              <input
+                type="checkbox"
+                class="debug-option-input"
+                :checked="track.loop"
+                @change="updateTrackLoop(track.trackIndex, ($event.target as HTMLInputElement).checked)"
+              />
+              <span class="track-loop-label">Loop</span>
+            </label>
+            <label class="track-mix-field">
+              <span class="track-mix-label">Mix</span>
+              <input
+                type="number"
+                min="0"
+                step="0.05"
+                class="track-mix-input"
+                :value="track.mixDuration"
+                :disabled="props.isPlaying"
+                @change="updateTrackMixDuration(track.trackIndex, ($event.target as HTMLInputElement).value)"
+              />
+              <span class="track-mix-unit">s</span>
+            </label>
+          </div>
         </div>
       </div>
     </section>
@@ -183,6 +186,7 @@ const props = defineProps<{
   animations?: string[]
   skins?: string[]
   tracks?: SpineTrackEntry[]
+  isPlaying?: boolean
   currentSkin?: string
   currentTime?: number
   duration?: number
@@ -259,6 +263,14 @@ const resolvedDebugOptions = computed<SpineDebugOptions>(() => ({
 
 const resolvedTextureFiltering = computed<SpineTextureFiltering>(() => {
   return props.textureFiltering ?? DEFAULT_SPINE_TEXTURE_FILTERING
+})
+
+const mixHintText = computed(() => {
+  if (props.isPlaying) {
+    return 'Mix 會在下次切換動畫時生效，播放中調整不會立即改變目前混合。'
+  }
+
+  return 'Mix 會在同一條 track 切換動畫時套用。'
 })
 
 watch(
@@ -470,6 +482,14 @@ const emitDebugOptionChange = (key: keyof SpineDebugOptions, event: Event) => {
   line-height: 1.2;
 }
 
+.track-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .track-mix-field {
   display: flex;
   align-items: center;
@@ -496,6 +516,25 @@ const emitDebugOptionChange = (key: keyof SpineDebugOptions, event: Event) => {
 .track-mix-input:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+.track-mix-input:disabled {
+  cursor: not-allowed;
+  color: var(--text-muted);
+  border-color: var(--border-muted);
+  background: color-mix(in srgb, var(--bg-surface) 70%, transparent);
+  opacity: 0.6;
+}
+
+.track-mix-input:disabled::-webkit-inner-spin-button,
+.track-mix-input:disabled::-webkit-outer-spin-button {
+  opacity: 0.35;
+}
+
+.track-mix-hint {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
 }
 
 .select-wrapper {

@@ -1,5 +1,22 @@
 <template>
   <section v-if="visible" class="playback-overlay">
+    <div v-if="trackOptions.length > 1" class="track-selector-row">
+      <span class="track-selector-label">Track</span>
+      <div class="track-selector-wrapper">
+        <select
+          class="track-selector-input"
+          :value="observedTrackIndex"
+          @change="emit('track-change', parseInt(($event.target as HTMLSelectElement).value, 10))"
+        >
+          <option v-for="track in trackOptions" :key="track.trackIndex" :value="track.trackIndex">
+            {{ formatTrackOption(track) }}
+          </option>
+        </select>
+        <svg class="track-selector-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
     <div class="time-row">
       <span class="time-current">{{ formatTime(displayedCurrentTime) }}</span>
       <span class="time-sep">/</span>
@@ -100,8 +117,15 @@ interface RuntimeNotificationInput {
   count: number
 }
 
+interface TrackOptionInput {
+  trackIndex: number
+  animationName: string
+}
+
 const props = defineProps<{
   visible?: boolean
+  trackOptions?: TrackOptionInput[]
+  observedTrackIndex?: number
   animationName?: string
   currentTime?: number
   duration?: number
@@ -112,6 +136,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  'track-change': [trackIndex: number]
   'playback-change': [playing: boolean]
   'seek': [time: number]
   'speed-change': [speed: number]
@@ -145,11 +170,12 @@ const runtimeNotificationItems = computed(() => {
   const activeAnimationName = props.animationName || null
 
   return (props.runtimeNotifications || []).filter(notification => {
-    if (notification.trackIndex !== 0) return false
     if (!activeAnimationName) return notification.animationName === null
     return notification.animationName === activeAnimationName
   })
 })
+
+const trackOptions = computed(() => props.trackOptions || [])
 
 const markerViewModels = computed<TimelineMarkerViewModel[]>(() => {
   if (!safeDuration.value) return []
@@ -310,6 +336,12 @@ const formatMarkerAriaLabel = (marker: TimelineMarkerViewModel) => {
   return `${formatTime(marker.time)} ${formatMarkerTooltip(marker)}`
 }
 
+const formatTrackOption = (track: TrackOptionInput) => {
+  return track.animationName
+    ? `${track.trackIndex}: ${track.animationName}`
+    : `${track.trackIndex}: Empty`
+}
+
 onUnmounted(() => {
   clearActivePointer()
 })
@@ -331,6 +363,51 @@ onUnmounted(() => {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(201, 141, 42, 0.08);
   backdrop-filter: blur(16px);
   z-index: 2;
+}
+
+.track-selector-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.track-selector-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.track-selector-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.track-selector-input {
+  width: 100%;
+  padding: 8px 30px 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.track-selector-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.track-selector-chevron {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
 }
 
 .time-row {

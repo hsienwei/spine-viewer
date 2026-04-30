@@ -217,6 +217,34 @@ export class Spine3RuntimeAdapter implements SpineRuntimeAdapter {
       }
 
       const getCurrentTrack = () => animationState?.getCurrent(0) || null
+      const getTrackPlaybackStates = () => {
+        const states = new Map<number, { trackIndex: number; animationName: string | null; currentTime: number; duration: number }>()
+
+        for (const track of appliedTrackEntries) {
+          states.set(track.trackIndex, {
+            trackIndex: track.trackIndex,
+            animationName: track.animationName || null,
+            currentTime: 0,
+            duration: 0
+          })
+        }
+
+        for (let trackIndex = 0; trackIndex < 32; trackIndex += 1) {
+          const entry = animationState?.getCurrent(trackIndex)
+          if (!entry) continue
+
+          const duration = entry.animation?.duration || 0
+          const currentTime = duration > 0 ? (entry.trackTime % duration) : entry.trackTime
+          states.set(trackIndex, {
+            trackIndex,
+            animationName: entry.animation?.name ?? null,
+            currentTime,
+            duration
+          })
+        }
+
+        return [...states.values()].sort((a, b) => a.trackIndex - b.trackIndex)
+      }
 
       const applyTrackAnimation = (track: SpineTrackEntry) => {
         if (!animationState) return
@@ -505,7 +533,12 @@ export class Spine3RuntimeAdapter implements SpineRuntimeAdapter {
         const frameDrawCall = renderer.batcher.getDrawCalls()
         renderer.end()
 
-        input.onTimeUpdate(currentTime, animationDuration, frameDrawCall)
+        input.onTimeUpdate({
+          currentTime,
+          duration: animationDuration,
+          drawCall: frameDrawCall,
+          tracks: getTrackPlaybackStates()
+        })
 
         animFrameId = requestAnimationFrame(renderLoop)
       }
@@ -541,8 +574,8 @@ export class Spine3RuntimeAdapter implements SpineRuntimeAdapter {
         setSelection: (selection) => {
           currentSelection = selection
         },
-        seekTo: (time: number) => {
-          const track = getCurrentTrack()
+        seekTo: (time: number, trackIndex = 0) => {
+          const track = animationState?.getCurrent(trackIndex) || null
           if (!track || !skeleton || !animationState) return
           const duration = track.animation?.duration || 0
           const nextTime = duration > 0 ? Math.max(0, Math.min(time, duration)) : Math.max(0, time)

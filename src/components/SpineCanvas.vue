@@ -36,7 +36,7 @@ import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { DEFAULT_SPINE_DEBUG_OPTIONS, DEFAULT_SPINE_TEXTURE_FILTERING, Spine3RuntimeAdapter, Spine4RuntimeAdapter } from '../lib/spine/adapters'
 import { detectSpineVersion } from '../lib/spine/versionDetection'
 import type { SpineSelectionState, SpineSkeletonStructure } from '../lib/spine/skeletonStructure'
-import type { SpineAnimationEventPayload, SpineAnimationSummary, SpineDebugOptions, SpineRuntimeSession, SpineTextureFiltering, SpineTrackEntry } from '../lib/spine/adapters'
+import type { SpineAnimationEventPayload, SpineAnimationSummary, SpineDebugOptions, SpineRuntimeSession, SpineTextureFiltering, SpineTrackEntry, SpineTrackPlaybackState } from '../lib/spine/adapters'
 import type { SpineDetectedVersion, SpineMajorVersion } from '../lib/spine/versionDetection'
 
 const props = defineProps<{
@@ -68,7 +68,12 @@ const emit = defineEmits<{
     fallbackUsed: boolean
   }): void
   (e: 'error', error: string): void
-  (e: 'timeUpdate', currentTime: number, duration: number, drawCall: number): void
+  (e: 'timeUpdate', state: {
+    currentTime: number
+    duration: number
+    drawCall: number
+    tracks: SpineTrackPlaybackState[]
+  }): void
   (e: 'runtimeEvent', payload: SpineAnimationEventPayload): void
 }>()
 
@@ -169,8 +174,8 @@ const syncSessionState = () => {
   viewScale.value = activeSession.getViewScale()
 }
 
-const seekTo = (time: number) => {
-  activeSession?.seekTo(time)
+const seekTo = (time: number, trackIndex = 0) => {
+  activeSession?.seekTo(time, trackIndex)
 }
 
 const resetView = () => {
@@ -262,9 +267,9 @@ const loadSpine = async () => {
             if (requestId !== loadRequestId) return
             emit('runtimeEvent', payload)
           },
-          onTimeUpdate: (time, duration, drawCall) => {
+          onTimeUpdate: (state) => {
             if (requestId !== loadRequestId) return
-            emit('timeUpdate', time, duration, drawCall)
+            emit('timeUpdate', state)
           },
           onViewState: (state) => {
             if (requestId !== loadRequestId) return

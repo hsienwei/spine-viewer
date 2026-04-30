@@ -45,6 +45,13 @@ export interface SpineTrackEntry {
   mixDuration: number
 }
 
+export interface SpineTrackPlaybackState {
+  trackIndex: number
+  animationName: string | null
+  currentTime: number
+  duration: number
+}
+
 export interface SpineSessionCreateInput {
   canvas: HTMLCanvasElement
   sourceFiles: SpineSourceFiles
@@ -65,7 +72,12 @@ export interface SpineSessionCreateInput {
   }) => void
   onError: (error: string) => void
   onAnimationEvent: (payload: SpineAnimationEventPayload) => void
-  onTimeUpdate: (currentTime: number, duration: number, drawCall: number) => void
+  onTimeUpdate: (state: {
+    currentTime: number
+    duration: number
+    drawCall: number
+    tracks: SpineTrackPlaybackState[]
+  }) => void
   onViewState: (state: {
     bounds: { width: number; height: number }
     panOffset: { x: number; y: number }
@@ -111,7 +123,7 @@ export interface SpineRuntimeSession {
   setTextureFiltering(filtering: SpineTextureFiltering): void
   setSelection(selection: SpineSelectionState): void
   setPremultipliedAlpha(value: boolean): void
-  seekTo(time: number): void
+  seekTo(time: number, trackIndex?: number): void
   resetView(): void
   getViewScale(): number
   adjustViewScale(nextScale: number): void

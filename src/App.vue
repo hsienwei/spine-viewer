@@ -60,6 +60,7 @@
               :animations="animations"
               :skins="skins"
               :tracks="animationTracks"
+              :is-playing="isPlaying"
               :current-skin="currentSkin"
               :current-time="currentTime"
               :duration="duration"
@@ -140,19 +141,22 @@
         :premultiplied-alpha="premultipliedAlpha"
         :texture-filtering="textureFiltering"
         @loaded="(data) => handleLoaded(data)"
-        @time-update="(time, animDuration, frameDrawCall) => handleTimeUpdate(time, animDuration, frameDrawCall)"
+        @time-update="(state) => handleTimeUpdate(state)"
         @runtime-event="(payload) => handleRuntimeEvent(payload)"
         @error="(err) => handleError(err)"
       />
       <PlaybackOverlay
         :visible="animations.length > 0"
-        :animation-name="animationName"
+        :track-options="overlayTrackOptions"
+        :observed-track-index="overlayTrackIndex"
+        :animation-name="observedAnimationName"
         :current-time="currentTime"
         :duration="duration"
         :is-playing="isPlaying"
         :playback-rate="playbackRate"
         :event-markers="currentAnimationMarkers"
         :runtime-notifications="visibleRuntimeNotifications"
+        @track-change="handleOverlayTrackChange"
         @playback-change="handlePlaybackChange"
         @seek="handleSeek"
         @speed-change="handleSpeedChange"
@@ -206,7 +210,7 @@ import PlaybackOverlay from './components/PlaybackOverlay.vue'
 import SpineCanvas from './components/SpineCanvas.vue'
 import StructurePanel from './components/StructurePanel.vue'
 import { DEFAULT_SPINE_DEBUG_OPTIONS, DEFAULT_SPINE_TEXTURE_FILTERING } from './lib/spine/adapters'
-import type { SpineAnimationEventMarker, SpineAnimationEventPayload, SpineAnimationSummary, SpineDebugOptions, SpineTextureFiltering, SpineTrackEntry } from './lib/spine/adapters'
+import type { SpineAnimationEventMarker, SpineAnimationEventPayload, SpineAnimationSummary, SpineDebugOptions, SpineTextureFiltering, SpineTrackEntry, SpineTrackPlaybackState } from './lib/spine/adapters'
 import type { SpineSelectionState, SpineSkeletonStructure } from './lib/spine/skeletonStructure'
 import type { SpineDetectedVersion, SpineMajorVersion } from './lib/spine/versionDetection'
 
@@ -215,6 +219,7 @@ const appVersion = packageJson.version
 const sourceFiles = ref<File[]>([])
 const animationName = ref('')
 const animationTracks = ref<SpineTrackEntry[]>([])
+const overlayTrackIndex = ref(0)
 const currentSkin = ref('')
 const isPlaying = ref(true)
 const playbackRate = ref(1)
@@ -235,6 +240,7 @@ const selection = ref<SpineSelectionState>({ boneName: null, slotName: null })
 const currentTime = ref(0)
 const duration = ref(0)
 const drawCall = ref(0)
+const trackPlaybackStates = ref<SpineTrackPlaybackState[]>([])
 const detectedVersion = ref<SpineDetectedVersion | null>(null)
 const runtimeVersion = ref<SpineMajorVersion | null>(null)
 const initialRuntimeVersion = ref<SpineMajorVersion | null>(null)
@@ -254,14 +260,40 @@ interface RuntimeNotificationRecord {
 const runtimeNotifications = ref<RuntimeNotificationRecord[]>([])
 
 const hasStructurePanel = computed(() => structure.value.bones.length > 0)
+const observedTrackState = computed(() => {
+  return trackPlaybackStates.value.find(track => track.trackIndex === overlayTrackIndex.value) || null
+})
+const observedAnimationName = computed(() => {
+  if (observedTrackState.value?.animationName) return observedTrackState.value.animationName
+  return animationTracks.value.find(track => track.trackIndex === overlayTrackIndex.value)?.animationName || ''
+})
 const currentAnimationSummary = computed(() => {
-  return animationSummaries.value.find(animation => animation.name === animationName.value) || null
+  if (!observedAnimationName.value) return null
+  return animationSummaries.value.find(animation => animation.name === observedAnimationName.value) || null
 })
 const currentAnimationMarkers = computed<SpineAnimationEventMarker[]>(() => {
   return currentAnimationSummary.value?.eventMarkers || []
 })
 const visibleRuntimeNotifications = computed(() => {
-  return runtimeNotifications.value.filter(item => item.visible).slice(0, 3)
+  return runtimeNotifications.value
+    .filter(item => item.visible && item.trackIndex === overlayTrackIndex.value)
+    .slice(0, 3)
+})
+const overlayTrackOptions = computed(() => {
+  const indices = new Set<number>()
+  animationTracks.value.forEach(track => indices.add(track.trackIndex))
+  trackPlaybackStates.value.forEach(track => indices.add(track.trackIndex))
+
+  return [...indices]
+    .sort((a, b) => a - b)
+    .map(trackIndex => {
+      const configuredTrack = animationTracks.value.find(track => track.trackIndex === trackIndex)
+      const activeTrack = trackPlaybackStates.value.find(track => track.trackIndex === trackIndex)
+      return {
+        trackIndex,
+        animationName: activeTrack?.animationName || configuredTrack?.animationName || ''
+      }
+    })
 })
 const privacyPolicyUrl = `${import.meta.env.BASE_URL}privacy-policy.html`
 const termsOfServiceUrl = `${import.meta.env.BASE_URL}terms-of-service.html`
@@ -313,6 +345,7 @@ const handleFileSelected = (payload: { files: File[] }) => {
   animations.value = []
   animationName.value = ''
   animationTracks.value = []
+  overlayTrackIndex.value = 0
   skins.value = []
   currentSkin.value = ''
   animationSummaries.value = []
@@ -321,6 +354,7 @@ const handleFileSelected = (payload: { files: File[] }) => {
   currentTime.value = 0
   duration.value = 0
   drawCall.value = 0
+  trackPlaybackStates.value = []
   detectedVersion.value = null
   runtimeVersion.value = null
   initialRuntimeVersion.value = null
@@ -363,6 +397,9 @@ const syncPrimaryTrackState = (tracks: SpineTrackEntry[]) => {
 const handleTracksChange = (tracks: SpineTrackEntry[]) => {
   const normalizedTracks = normalizeTracks(tracks)
   animationTracks.value = normalizedTracks
+  if (!normalizedTracks.some(track => track.trackIndex === overlayTrackIndex.value)) {
+    overlayTrackIndex.value = normalizedTracks[0]?.trackIndex || 0
+  }
   syncPrimaryTrackState(normalizedTracks)
 }
 
@@ -380,7 +417,15 @@ const handleSpeedChange = (speed: number) => {
 
 const handleSeek = (time: number) => {
   currentTime.value = time
-  spineCanvasRef.value?.seekTo(time)
+  spineCanvasRef.value?.seekTo(time, overlayTrackIndex.value)
+}
+
+const handleOverlayTrackChange = (trackIndex: number) => {
+  overlayTrackIndex.value = trackIndex
+  const trackState = trackPlaybackStates.value.find(track => track.trackIndex === trackIndex)
+  currentTime.value = trackState?.currentTime || 0
+  duration.value = trackState?.duration || 0
+  clearRuntimeNotifications()
 }
 
 const handleDebugOptionChange = (key: keyof SpineDebugOptions, value: boolean) => {
@@ -441,24 +486,34 @@ const handleLoaded = (data: {
       mixDuration: 0
     }
     animationTracks.value = [initialTrack]
+    overlayTrackIndex.value = 0
     animationName.value = initialTrack.animationName
   } else {
     animationTracks.value = []
+    overlayTrackIndex.value = 0
     animationName.value = ''
   }
   duration.value = data.duration || data.animationSummaries[0]?.duration || 2.5
   drawCall.value = data.drawCall
   currentTime.value = 0
+  trackPlaybackStates.value = []
   detectedVersion.value = data.detectedVersion
   initialRuntimeVersion.value = data.initialRuntimeVersion
   runtimeVersion.value = data.runtimeVersion
   fallbackUsed.value = data.fallbackUsed
 }
 
-const handleTimeUpdate = (time: number, animDuration: number, frameDrawCall: number) => {
-  currentTime.value = time
-  duration.value = animDuration || duration.value
-  drawCall.value = frameDrawCall
+const handleTimeUpdate = (state: {
+  currentTime: number
+  duration: number
+  drawCall: number
+  tracks: SpineTrackPlaybackState[]
+}) => {
+  trackPlaybackStates.value = state.tracks
+  const observedState = state.tracks.find(track => track.trackIndex === overlayTrackIndex.value)
+  currentTime.value = observedState?.currentTime ?? state.currentTime
+  duration.value = observedState?.duration ?? state.duration ?? duration.value
+  drawCall.value = state.drawCall
 }
 
 const hideRuntimeNotification = (notificationId: number) => {
