@@ -28,6 +28,10 @@
         Reset View
       </button>
     </div>
+    <div v-if="props.watermarkLabel" class="share-watermark" aria-hidden="true">
+      <span>{{ props.watermarkLabel }}</span>
+      <span>VIEW ONLY</span>
+    </div>
   </div>
 </template>
 
@@ -50,6 +54,7 @@ const props = defineProps<{
   selection?: SpineSelectionState
   premultipliedAlpha?: boolean
   textureFiltering?: SpineTextureFiltering
+  watermarkLabel?: string
 }>()
 
 const emit = defineEmits<{
@@ -564,5 +569,25 @@ defineExpose({
   border-color: var(--accent);
   color: var(--accent);
   background: var(--accent-dim);
+}
+
+.share-watermark {
+  position: absolute;
+  inset: 20px 20px auto auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.18);
+  color: rgba(255, 255, 255, 0.44);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  pointer-events: none;
+  z-index: 11;
+  backdrop-filter: blur(6px);
 }
 </style>

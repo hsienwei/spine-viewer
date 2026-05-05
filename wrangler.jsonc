@@ -2,11 +2,30 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "spine-viewer",
   "compatibility_date": "2026-04-24",
+  "main": "./worker/index.ts",
   "observability": {
     "enabled": true
   },
   "assets": {
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    "binding": "ASSETS"
+  },
+  "r2_buckets": [
+    {
+      "binding": "SHARE_BUCKET",
+      "bucket_name": "spine-viewer-share"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "SHARE_KV",
+      "id": "spine-viewer-share-kv"
+    }
+  ],
+  "triggers": {
+    "crons": [
+      "0 * * * *"
+    ]
   },
   "compatibility_flags": [
     "nodejs_compat"

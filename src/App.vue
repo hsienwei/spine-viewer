@@ -77,6 +77,60 @@
           </div>
         </div>
 
+        <div v-if="shareHistory.length > 0" class="sidebar-panel">
+          <button
+            type="button"
+            class="sidebar-panel-header"
+            @click="isShareHistoryOpen = !isShareHistoryOpen"
+          >
+            <span>Share History</span>
+            <svg class="panel-chevron" :class="{ open: isShareHistoryOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div v-show="isShareHistoryOpen" class="sidebar-panel-body">
+            <div class="share-history-list">
+              <div 
+                v-for="item in shareHistory"  
+                :key="item.token"  
+                class="share-history-item"  
+                :class="`share-history-item--${getShareHistoryStatus(item)}`"  
+              >  
+                <div class="share-history-meta">  
+                  <div class="share-history-title-row">
+                    <span class="share-history-title">{{ item.skeletonName }}</span>
+                    <span class="share-history-status" :class="`share-history-status--${getShareHistoryStatus(item)}`">
+                      {{ getShareHistoryStatusLabel(item) }}
+                    </span>
+                  </div>
+                  <span class="share-history-subtitle">  
+                    Expires {{ formatShareDate(item.expiresAt) }}  
+                  </span>  
+                </div>  
+                <div class="share-history-actions"> 
+                  <button type="button" class="mini-action-btn" :disabled="!isShareHistoryActionAllowed(item)" @click="openShareLink(item.shareUrl)">Open</button> 
+                  <button type="button" class="mini-action-btn" :disabled="!isShareHistoryActionAllowed(item)" @click="copyShareLink(item.shareUrl)">Copy</button> 
+                  <button 
+                    type="button" 
+                    class="mini-action-btn danger" 
+                    :disabled="getShareHistoryStatus(item) !== 'active' || !!item.revoking" 
+                    @click="handleRevokeShare(item.token)" 
+                  > 
+                    {{ item.revoking ? 'Revoking...' : getShareHistoryRevokeLabel(item) }} 
+                  </button> 
+                  <button 
+                    type="button" 
+                    class="mini-action-btn danger" 
+                    @click="deleteShareHistory(item.token)"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div v-if="hasStructurePanel" class="sidebar-panel">
           <button
             type="button"
@@ -101,6 +155,27 @@
       </div>
 
       <div class="sidebar-footer">
+        <button
+          v-if="canShare"
+          type="button"
+          class="sidebar-link sidebar-link-button"
+          :disabled="isSharing"
+          @click="handleCreateShare"
+        >
+          {{ isSharing ? 'Sharing...' : 'Share' }}
+        </button>
+        <p v-if="shareStatusText" class="sidebar-status" :class="{ error: !!shareError }">
+          {{ shareStatusText }}
+        </p>
+        <a
+          v-if="shareUrl"
+          class="sidebar-link"
+          :href="shareUrl"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Open Share Link
+        </a>
         <button
           type="button"
           class="sidebar-link sidebar-link-button"
@@ -140,6 +215,7 @@
         :selection="selection"
         :premultiplied-alpha="premultipliedAlpha"
         :texture-filtering="textureFiltering"
+        :watermark-label="activeWatermarkLabel"
         @loaded="(data) => handleLoaded(data)"
         @time-update="(state) => handleTimeUpdate(state)"
         @runtime-event="(payload) => handleRuntimeEvent(payload)"
@@ -212,7 +288,10 @@ import StructurePanel from './components/StructurePanel.vue'
 import { DEFAULT_SPINE_DEBUG_OPTIONS, DEFAULT_SPINE_TEXTURE_FILTERING } from './lib/spine/adapters'
 import type { SpineAnimationEventMarker, SpineAnimationEventPayload, SpineAnimationSummary, SpineDebugOptions, SpineTextureFiltering, SpineTrackEntry, SpineTrackPlaybackState } from './lib/spine/adapters'
 import type { SpineSelectionState, SpineSkeletonStructure } from './lib/spine/skeletonStructure'
-import type { SpineDetectedVersion, SpineMajorVersion } from './lib/spine/versionDetection'
+import { classifySpineFiles, type SpineDetectedVersion, type SpineMajorVersion } from './lib/spine/versionDetection'
+import { createShareLink, extractShareTokenFromPath, fetchShareManifest, fetchSharedSourceFiles, revokeShareLink } from './lib/share/api'
+import { prepareShareUpload } from './lib/share/prepareShareUpload'
+import type { ShareManifest } from './lib/share/types'
 
 const appVersion = packageJson.version
 
@@ -245,6 +324,28 @@ const detectedVersion = ref<SpineDetectedVersion | null>(null)
 const runtimeVersion = ref<SpineMajorVersion | null>(null)
 const initialRuntimeVersion = ref<SpineMajorVersion | null>(null)
 const fallbackUsed = ref(false)
+const isSharing = ref(false)
+const shareUrl = ref('')
+const shareExpiresAt = ref('')
+const shareError = ref('')
+const shareToken = ref('')
+const shareManifest = ref<ShareManifest | null>(null)
+const isShareHistoryOpen = ref(true)
+
+interface ShareHistoryEntry {
+  token: string
+  shareUrl: string
+  createdAt: string
+  expiresAt: string
+  revokedAt: string | null
+  skeletonName: string
+  atlasName: string
+  watermarkLabel: string
+  revoking?: boolean
+}
+
+const SHARE_HISTORY_KEY = 'spine-viewer-share-history'
+const shareHistory = ref<ShareHistoryEntry[]>([])
 
 interface RuntimeNotificationRecord {
   id: number
@@ -259,8 +360,101 @@ interface RuntimeNotificationRecord {
 
 const runtimeNotifications = ref<RuntimeNotificationRecord[]>([])
 
-const hasStructurePanel = computed(() => structure.value.bones.length > 0)
-const observedTrackState = computed(() => {
+const hasStructurePanel = computed(() => structure.value.bones.length > 0) 
+const canShare = computed(() => sourceFiles.value.length > 0 && animations.value.length > 0) 
+const activeWatermarkLabel = computed(() => shareManifest.value?.watermark.label || '') 
+const shareStatusText = computed(() => { 
+  if (shareError.value) return shareError.value
+  if (shareUrl.value && shareExpiresAt.value) {
+    return `Share link ready. Expires ${new Date(shareExpiresAt.value).toLocaleString()}.`
+  }
+  if (shareToken.value && shareManifest.value) {
+    return `Shared preview. Expires ${new Date(shareManifest.value.expiresAt).toLocaleString()}.`
+  } 
+  return '' 
+}) 
+const sortShareHistory = (entries: ShareHistoryEntry[]) => { 
+  return [...entries].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)) 
+} 
+
+const getShareHistoryStatus = (item: ShareHistoryEntry) => {
+  if (item.revokedAt) return 'revoked'
+  if (Date.parse(item.expiresAt) <= Date.now()) return 'expired'
+  return 'active'
+}
+
+const getShareHistoryStatusLabel = (item: ShareHistoryEntry) => {
+  const status = getShareHistoryStatus(item)
+  if (status === 'revoked') return 'Revoked'
+  if (status === 'expired') return 'Expired'
+  return 'Active'
+}
+
+const getShareHistoryRevokeLabel = (item: ShareHistoryEntry) => {
+  const status = getShareHistoryStatus(item)
+  if (status === 'revoked') return 'Revoked'
+  if (status === 'expired') return 'Expired'
+  return 'Revoke'
+}
+
+const isShareHistoryActionAllowed = (item: ShareHistoryEntry) => {
+  return getShareHistoryStatus(item) === 'active'
+}
+
+const loadShareHistory = () => { 
+  try {
+    const saved = localStorage.getItem(SHARE_HISTORY_KEY)
+    if (!saved) return
+
+    const parsed = JSON.parse(saved) as ShareHistoryEntry[]
+    shareHistory.value = sortShareHistory(
+      parsed.filter(item => item && typeof item.token === 'string' && typeof item.shareUrl === 'string')
+    )
+  } catch {
+    shareHistory.value = []
+  }
+}
+
+const persistShareHistory = () => {
+  localStorage.setItem(SHARE_HISTORY_KEY, JSON.stringify(shareHistory.value))
+}
+
+const upsertShareHistory = (entry: ShareHistoryEntry) => {
+  const nextEntries = shareHistory.value.filter(item => item.token !== entry.token)
+  shareHistory.value = sortShareHistory([entry, ...nextEntries])
+  persistShareHistory()
+}
+
+const markShareHistoryRevoked = (token: string, revokedAt: string) => { 
+  shareHistory.value = shareHistory.value.map(item => ( 
+    item.token === token 
+      ? { ...item, revokedAt, revoking: false } 
+      : item 
+  )) 
+  persistShareHistory() 
+} 
+
+const deleteShareHistory = (token: string) => {
+  shareHistory.value = shareHistory.value.filter(item => item.token !== token)
+  persistShareHistory()
+}
+
+const formatShareDate = (value: string) => { 
+  return new Date(value).toLocaleString() 
+} 
+
+const copyShareLink = async (url: string) => {
+  try {
+    await navigator.clipboard.writeText(url)
+  } catch {
+    window.prompt('Copy share link', url)
+  }
+}
+
+const openShareLink = (url: string) => {
+  window.open(url, '_blank', 'noreferrer')
+}
+const observedTrackState = computed(() => { 
   return trackPlaybackStates.value.find(track => track.trackIndex === overlayTrackIndex.value) || null
 })
 const observedAnimationName = computed(() => {
@@ -323,25 +517,7 @@ const toggleTheme = () => {
   applyTheme(isDark.value)
 }
 
-onMounted(() => {
-  const saved = localStorage.getItem(THEME_KEY)
-  if (saved) {
-    isDark.value = saved === 'dark'
-  } else {
-    isDark.value = !window.matchMedia('(prefers-color-scheme: light)').matches
-  }
-  applyTheme(isDark.value)
-  window.addEventListener('keydown', handleWindowKeydown)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleWindowKeydown)
-  runtimeNotificationTimers.forEach(timeoutId => window.clearTimeout(timeoutId))
-  runtimeNotificationTimers.clear()
-})
-
-const handleFileSelected = (payload: { files: File[] }) => {
-  sourceFiles.value = payload.files
+const resetViewerState = () => {
   animations.value = []
   animationName.value = ''
   animationTracks.value = []
@@ -360,6 +536,62 @@ const handleFileSelected = (payload: { files: File[] }) => {
   initialRuntimeVersion.value = null
   fallbackUsed.value = false
   clearRuntimeNotifications()
+}
+
+const loadSharedSession = async (token: string) => {
+  shareError.value = ''
+  shareUrl.value = ''
+  shareExpiresAt.value = ''
+  shareToken.value = token
+  resetViewerState()
+
+  try {
+    const manifest = await fetchShareManifest(token)
+    const sharedFiles = await fetchSharedSourceFiles(token, manifest)
+    shareManifest.value = manifest
+    sourceFiles.value = [
+      sharedFiles.skeletonFile,
+      sharedFiles.atlasFile,
+      ...sharedFiles.textureFiles
+    ]
+    isLoadFilesPanelOpen.value = false
+  } catch (error) {
+    shareManifest.value = null
+    shareError.value = error instanceof Error ? error.message : 'Failed to load shared assets'
+  }
+}
+
+onMounted(() => { 
+  loadShareHistory()
+  const saved = localStorage.getItem(THEME_KEY) 
+  if (saved) {
+    isDark.value = saved === 'dark'
+  } else {
+    isDark.value = !window.matchMedia('(prefers-color-scheme: light)').matches
+  }
+  applyTheme(isDark.value)
+  window.addEventListener('keydown', handleWindowKeydown)
+
+  const initialShareToken = extractShareTokenFromPath(window.location.pathname)
+  if (initialShareToken) {
+    void loadSharedSession(initialShareToken)
+  }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleWindowKeydown)
+  runtimeNotificationTimers.forEach(timeoutId => window.clearTimeout(timeoutId))
+  runtimeNotificationTimers.clear()
+})
+
+const handleFileSelected = (payload: { files: File[] }) => {
+  sourceFiles.value = payload.files
+  shareManifest.value = null
+  shareToken.value = ''
+  shareUrl.value = ''
+  shareExpiresAt.value = ''
+  shareError.value = ''
+  resetViewerState()
 }
 
 const clearRuntimeNotifications = () => {
@@ -642,6 +874,63 @@ const handleRuntimeEvent = (payload: SpineAnimationEventPayload) => {
 const handleError = (error: string) => {
   console.error('Spine Canvas Error:', error)
 }
+
+const handleCreateShare = async () => {
+  if (!canShare.value || isSharing.value) return
+
+  shareError.value = ''
+  shareUrl.value = ''
+  shareExpiresAt.value = ''
+  isSharing.value = true
+
+  try { 
+    const prepared = await prepareShareUpload(classifySpineFiles(sourceFiles.value)) 
+    const result = await createShareLink(prepared) 
+    upsertShareHistory({
+      token: result.token,
+      shareUrl: result.shareUrl,
+      createdAt: prepared.manifest.createdAt,
+      expiresAt: result.expiresAt,
+      revokedAt: null,
+      skeletonName: prepared.manifest.files.skeleton.name,
+      atlasName: prepared.manifest.files.atlas.name,
+      watermarkLabel: prepared.manifest.watermark.label
+    })
+    shareUrl.value = result.shareUrl 
+    shareExpiresAt.value = result.expiresAt 
+    await navigator.clipboard?.writeText(result.shareUrl) 
+  } catch (error) { 
+    shareError.value = error instanceof Error ? error.message : 'Failed to create share link' 
+  } finally { 
+    isSharing.value = false 
+  } 
+} 
+
+const handleRevokeShare = async (token: string) => { 
+  const currentItem = shareHistory.value.find(item => item.token === token) 
+  if (!currentItem || getShareHistoryStatus(currentItem) !== 'active') return
+
+  shareHistory.value = shareHistory.value.map(item => (
+    item.token === token
+      ? { ...item, revoking: true }
+      : item
+  ))
+
+  try {
+    const result = await revokeShareLink(token)
+    markShareHistoryRevoked(token, result.revokedAt)
+    if (shareToken.value === token) {
+      shareError.value = 'Share link revoked'
+    }
+  } catch (error) {
+    shareHistory.value = shareHistory.value.map(item => (
+      item.token === token
+        ? { ...item, revoking: false }
+        : item
+    ))
+    shareError.value = error instanceof Error ? error.message : 'Failed to revoke share link'
+  }
+}
 </script>
 
 <style>
@@ -797,6 +1086,21 @@ html, body, #app {
   padding: 0;
 }
 
+.sidebar-link-button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.sidebar-status {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.sidebar-status.error {
+  color: var(--danger);
+}
+
 .sidebar-brand {
   display: flex;
   align-items: center;
@@ -908,6 +1212,132 @@ html, body, #app {
 
 .sidebar-panel-body {
   overflow: visible;
+}
+
+.share-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px 14px;
+}
+
+.share-history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+
+.share-history-item--revoked,
+.share-history-item--expired {
+  opacity: 0.65;
+}
+
+.share-history-item--expired {
+  border-color: rgba(91, 150, 212, 0.28);
+}
+
+.share-history-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.share-history-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.share-history-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-history-subtitle {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.share-history-status {
+  flex-shrink: 0;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+}
+
+.share-history-status--active {
+  color: var(--success);
+  border-color: rgba(95, 173, 130, 0.35);
+}
+
+.share-history-status--revoked {
+  color: var(--danger);
+  border-color: rgba(180, 64, 48, 0.35);
+}
+
+.share-history-status--expired {
+  color: var(--info);
+  border-color: rgba(46, 108, 184, 0.35);
+}
+
+.share-history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mini-action-btn {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition), background var(--transition), opacity var(--transition);
+}
+
+.mini-action-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.mini-action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mini-action-btn.danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: rgba(196, 107, 90, 0.08);
+}
+
+.mini-action-btn.danger {
+  color: var(--danger);
+}
+
+.mini-action-btn:disabled {
+  color: var(--text-muted);
 }
 
 .main-content {
