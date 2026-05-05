@@ -132,9 +132,9 @@
         </div>
 
         <div v-if="hasStructurePanel" class="sidebar-panel">
-          <button
-            type="button"
-            class="sidebar-panel-header"
+          <button 
+            type="button" 
+            class="sidebar-panel-header" 
             @click="isStructurePanelOpen = !isStructurePanelOpen"
           >
             <span>Skeleton</span>
@@ -152,9 +152,14 @@
           </div>
         </div>
 
-      </div>
+        <div v-if="shareError && !shareManifest" class="share-error-banner">
+          <div class="share-error-title">Share load failed</div>
+          <div class="share-error-copy">{{ shareError }}</div>
+        </div>
 
-      <div class="sidebar-footer">
+      </div> 
+
+      <div class="sidebar-footer"> 
         <button
           v-if="canShare"
           type="button"
@@ -191,16 +196,16 @@
         >
           Privacy Policy
         </a>
-        <a
-          class="sidebar-link"
-          :href="termsOfServiceUrl"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Terms of Service
-        </a>
-      </div>
-    </aside>
+        <a 
+          class="sidebar-link" 
+          :href="termsOfServiceUrl" 
+          target="_blank" 
+          rel="noreferrer" 
+        > 
+          Terms of Service 
+        </a> 
+      </div> 
+    </aside> 
 
     <main class="main-content">
       <SpineCanvas
@@ -211,15 +216,14 @@
         :skin-name="currentSkin"
         :is-playing="isPlaying"
         :playback-rate="playbackRate"
-        :debug-options="debugOptions"
-        :selection="selection"
-        :premultiplied-alpha="premultipliedAlpha"
-        :texture-filtering="textureFiltering"
-        :watermark-label="activeWatermarkLabel"
-        @loaded="(data) => handleLoaded(data)"
-        @time-update="(state) => handleTimeUpdate(state)"
-        @runtime-event="(payload) => handleRuntimeEvent(payload)"
-        @error="(err) => handleError(err)"
+        :debug-options="debugOptions" 
+        :selection="selection" 
+        :premultiplied-alpha="premultipliedAlpha" 
+        :texture-filtering="textureFiltering" 
+        @loaded="(data) => handleLoaded(data)" 
+        @time-update="(state) => handleTimeUpdate(state)" 
+        @runtime-event="(payload) => handleRuntimeEvent(payload)" 
+        @error="(err) => handleError(err)" 
       />
       <PlaybackOverlay
         :visible="animations.length > 0"
@@ -289,7 +293,7 @@ import { DEFAULT_SPINE_DEBUG_OPTIONS, DEFAULT_SPINE_TEXTURE_FILTERING } from './
 import type { SpineAnimationEventMarker, SpineAnimationEventPayload, SpineAnimationSummary, SpineDebugOptions, SpineTextureFiltering, SpineTrackEntry, SpineTrackPlaybackState } from './lib/spine/adapters'
 import type { SpineSelectionState, SpineSkeletonStructure } from './lib/spine/skeletonStructure'
 import { classifySpineFiles, type SpineDetectedVersion, type SpineMajorVersion } from './lib/spine/versionDetection'
-import { createShareLink, extractShareTokenFromPath, fetchShareManifest, fetchSharedSourceFiles, revokeShareLink } from './lib/share/api'
+import { createShareLink, extractShareTokenFromPath, fetchShareManifest, fetchSharedSourceFiles, normalizeShareErrorMessage, revokeShareLink } from './lib/share/api' 
 import { prepareShareUpload } from './lib/share/prepareShareUpload'
 import type { ShareManifest } from './lib/share/types'
 
@@ -360,10 +364,9 @@ interface RuntimeNotificationRecord {
 
 const runtimeNotifications = ref<RuntimeNotificationRecord[]>([])
 
-const hasStructurePanel = computed(() => structure.value.bones.length > 0) 
-const canShare = computed(() => sourceFiles.value.length > 0 && animations.value.length > 0) 
-const activeWatermarkLabel = computed(() => shareManifest.value?.watermark.label || '') 
-const shareStatusText = computed(() => { 
+const hasStructurePanel = computed(() => structure.value.bones.length > 0)  
+const canShare = computed(() => sourceFiles.value.length > 0 && animations.value.length > 0)  
+const shareStatusText = computed(() => {  
   if (shareError.value) return shareError.value
   if (shareUrl.value && shareExpiresAt.value) {
     return `Share link ready. Expires ${new Date(shareExpiresAt.value).toLocaleString()}.`
@@ -555,11 +558,11 @@ const loadSharedSession = async (token: string) => {
       ...sharedFiles.textureFiles
     ]
     isLoadFilesPanelOpen.value = false
-  } catch (error) {
-    shareManifest.value = null
-    shareError.value = error instanceof Error ? error.message : 'Failed to load shared assets'
-  }
-}
+  } catch (error) { 
+    shareManifest.value = null 
+    shareError.value = error instanceof Error ? normalizeShareErrorMessage(error.message) : 'Failed to load shared assets' 
+  } 
+} 
 
 onMounted(() => { 
   loadShareHistory()
@@ -928,7 +931,7 @@ const handleRevokeShare = async (token: string) => {
         ? { ...item, revoking: false }
         : item
     ))
-    shareError.value = error instanceof Error ? error.message : 'Failed to revoke share link'
+    shareError.value = error instanceof Error ? normalizeShareErrorMessage(error.message) : 'Failed to revoke share link'
   }
 }
 </script>
@@ -1097,12 +1100,35 @@ html, body, #app {
   color: var(--text-muted);
 }
 
-.sidebar-status.error {
+.sidebar-status.error { 
+  color: var(--danger); 
+} 
+
+.share-error-banner {
+  margin: 12px 14px 0;
+  padding: 10px 10px 11px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(196, 107, 90, 0.32);
+  background: rgba(196, 107, 90, 0.08);
+}
+
+.share-error-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--danger);
 }
 
-.sidebar-brand {
-  display: flex;
+.share-error-copy {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.sidebar-brand { 
+  display: flex; 
   align-items: center;
   gap: 10px;
   padding: 18px 16px 14px;

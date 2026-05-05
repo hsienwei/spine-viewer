@@ -24,7 +24,7 @@ export interface ShareManifest {
     textures: ShareManifestTexture[]
   }
   watermark: {
-    mode: 'tiled-diagonal'
+    mode: 'tiled-diagonal' | 'tiled-horizontal' | 'soft-diagonal' | 'soft-text'
     label: string
   }
 }

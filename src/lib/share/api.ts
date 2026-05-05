@@ -7,21 +7,43 @@ export interface ShareUploadResult {
   expiresAt: string
 }
 
-const parseResponse = async <T>(response: Response): Promise<T> => {
-  if (response.ok) {
-    return response.json() as Promise<T>
+const parseResponse = async <T>(response: Response): Promise<T> => { 
+  if (response.ok) { 
+    return response.json() as Promise<T> 
+  } 
+
+  let message = `Request failed: ${response.status}` 
+  try { 
+    const payload = await response.json() as { error?: string } 
+    if (payload.error) { 
+      message = payload.error 
+    } 
+  } catch { 
+    // Ignore JSON parse failures and keep fallback message. 
+  } 
+  throw new Error(message) 
+} 
+
+export const normalizeShareErrorMessage = (message: string) => {
+  const normalized = message.toLowerCase()
+
+  if (normalized.includes('expired')) {
+    return 'This share link expired. Ask the sender for a new link.'
+  }
+  if (normalized.includes('revoked')) {
+    return 'This share link was revoked by the sender.'
+  }
+  if (normalized.includes('not found')) {
+    return 'This share link is unavailable or was deleted.'
+  }
+  if (normalized.includes('asset not found')) {
+    return 'The share exists, but one or more assets are missing.'
+  }
+  if (normalized.includes('failed to download shared asset')) {
+    return 'A shared asset could not be downloaded.'
   }
 
-  let message = `Request failed: ${response.status}`
-  try {
-    const payload = await response.json() as { error?: string }
-    if (payload.error) {
-      message = payload.error
-    }
-  } catch {
-    // Ignore JSON parse failures and keep fallback message.
-  }
-  throw new Error(message)
+  return message
 }
 
 export const createShareLink = async (payload: PreparedShareUpload): Promise<ShareUploadResult> => {

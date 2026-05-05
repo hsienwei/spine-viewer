@@ -11,36 +11,79 @@ const buildWatermarkLabel = () => {
   return `SHARE ${token}`
 }
 
-const drawTiledWatermark = (
-  context: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
-  label: string,
-  expiresAtLabel: string
-) => {
-  context.save()
-  context.translate(canvas.width / 2, canvas.height / 2)
-  context.rotate(-Math.PI / 4)
-  context.textAlign = 'center'
-  context.textBaseline = 'middle'
-  context.fillStyle = 'rgba(255, 255, 255, 0.08)'
-  context.font = `700 ${Math.max(18, Math.round(canvas.width / 24))}px sans-serif`
+const createTextMask = (canvas: HTMLCanvasElement, label: string) => {
+  const maskCanvas = document.createElement('canvas')
+  maskCanvas.width = canvas.width
+  maskCanvas.height = canvas.height
 
-  const phrase = `${label}  VIEW ONLY  ${expiresAtLabel}`
-  const stepX = Math.max(260, Math.round(canvas.width * 0.3))
-  const stepY = Math.max(180, Math.round(canvas.height * 0.2))
+  const maskContext = maskCanvas.getContext('2d')
+  if (!maskContext) {
+    throw new Error('Failed to create canvas context for watermark mask')
+  }
 
-  for (let y = -canvas.height; y <= canvas.height; y += stepY) {
-    for (let x = -canvas.width; x <= canvas.width; x += stepX) {
-      context.fillText(phrase, x, y)
+  const minDimension = Math.min(canvas.width, canvas.height)
+  const fontSize = Math.max(10, Math.round(minDimension * 0.018))
+  const rowGap = Math.max(24, Math.round(fontSize * 2.4))
+  const columnGap = Math.max(28, Math.round(fontSize * 2.8))
+
+  maskContext.save()
+  maskContext.font = `600 ${fontSize}px sans-serif`
+  maskContext.textBaseline = 'middle'
+  maskContext.textAlign = 'left'
+  maskContext.fillStyle = 'rgba(255, 255, 255, 0.92)'
+
+  const textWidth = Math.ceil(maskContext.measureText(label).width)
+  const stepX = textWidth + columnGap
+
+  for (let y = rowGap; y < canvas.height + rowGap; y += rowGap) {
+    const rowIndex = Math.floor((y - rowGap) / rowGap)
+    const offsetX = rowIndex % 2 === 0 ? columnGap : Math.round(columnGap + stepX / 2)
+
+    for (let x = -textWidth; x < canvas.width + textWidth; x += stepX) {
+      maskContext.fillText(label, x + offsetX, y)
     }
   }
-  context.restore()
+
+  maskContext.restore()
+  return maskContext.getImageData(0, 0, canvas.width, canvas.height)
+}
+
+const drawSoftTextWatermark = (
+  context: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  label: string
+) => {
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
+  const pixels = imageData.data
+  const mask = createTextMask(canvas, label).data
+
+  const alphaThreshold = 36
+  const maxTint = 0.11
+
+  for (let y = 0; y < canvas.height; y += 1) {
+    for (let x = 0; x < canvas.width; x += 1) {
+      const index = (y * canvas.width + x) * 4
+      const alpha = pixels[index + 3]
+      if (alpha <= alphaThreshold) continue
+
+      const maskAlpha = mask[index + 3] / 255
+      if (maskAlpha <= 0) continue
+
+      const alphaStrength = (alpha - alphaThreshold) / (255 - alphaThreshold)
+      const strength = Math.min(maxTint, Math.max(0, maskAlpha * alphaStrength * maxTint))
+
+      pixels[index] = Math.round(pixels[index] * (1 - strength))
+      pixels[index + 1] = Math.round(pixels[index + 1] * (1 - strength))
+      pixels[index + 2] = Math.round(pixels[index + 2] * (1 - strength))
+    }
+  }
+
+  context.putImageData(imageData, 0, 0)
 }
 
 const processTextureFile = async (
   file: File,
-  label: string,
-  expiresAtLabel: string
+  label: string
 ) => {
   const bitmap = await readImageBitmap(file)
   const canvas = document.createElement('canvas')
@@ -54,7 +97,7 @@ const processTextureFile = async (
   }
 
   context.drawImage(bitmap, 0, 0)
-  drawTiledWatermark(context, canvas, label, expiresAtLabel)
+  drawSoftTextWatermark(context, canvas, label)
   bitmap.close()
 
   const blob = await new Promise<Blob>((resolve, reject) => {
@@ -84,10 +127,9 @@ export const prepareShareUpload = async (sourceFiles: SpineSourceFiles): Promise
   const now = new Date()
   const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000)
   const watermarkLabel = buildWatermarkLabel()
-  const expiresAtLabel = `EXP ${expiresAt.toLocaleString()}`
 
   const processedTextures = await Promise.all(
-    sourceFiles.textureFiles.map(file => processTextureFile(file, watermarkLabel, expiresAtLabel))
+    sourceFiles.textureFiles.map(file => processTextureFile(file, watermarkLabel))
   )
 
   const manifest: ShareManifest = {
@@ -106,7 +148,7 @@ export const prepareShareUpload = async (sourceFiles: SpineSourceFiles): Promise
       textures: processedTextures.map(item => item.textureManifest)
     },
     watermark: {
-      mode: 'tiled-diagonal',
+      mode: 'soft-text',
       label: watermarkLabel
     }
   }
