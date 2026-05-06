@@ -304,50 +304,6 @@ const handleShareRevoke = async (env: Env, token: string) => {
   return createJsonResponse({ revoked: true, revokedAt }) 
 } 
 
-const deleteShareArtifacts = async (env: Env, record: ShareRecord) => {
-  const keys = [
-    `share/${record.shareId}/manifest.json`,
-    `share/${record.shareId}/skeleton/${record.fileList.skeleton}`,
-    `share/${record.shareId}/atlas/${record.fileList.atlas}`,
-    ...record.fileList.textures.map(texture => `share/${record.shareId}/textures/${texture.storedName}`)
-  ]
-
-  await Promise.all(keys.map(key => env.SHARE_BUCKET.delete(key)))
-}
-
-const cleanupShareRecord = async (env: Env, token: string, record: ShareRecord) => {
-  await deleteShareArtifacts(env, record)
-  await env.SHARE_KV.delete(`share:${token}`)
-}
-
-const handleCleanupShares = async (env: Env) => {
-  let cursor: string | undefined
-  let cleaned = 0
-
-  do {
-    const page = await env.SHARE_KV.list({
-      prefix: 'share:',
-      limit: 100,
-      cursor
-    })
-
-    for (const key of page.keys) {
-      const token = key.name.slice('share:'.length)
-      const record = await getShareRecord(env, token)
-      if (!record) continue
-
-      if (record.revokedAt || isShareExpired(record)) {
-        await cleanupShareRecord(env, token, record)
-        cleaned += 1
-      }
-    }
-
-    cursor = page.cursor
-  } while (cursor)
-
-  return createJsonResponse({ cleaned })
-}
-
 const handleSharePage = async (request: Request, env: Env) => {
   return env.ASSETS.fetch(new URL('/', request.url))
 }
@@ -375,18 +331,11 @@ export default {
       return handleShareRevoke(env, revokeMatch[1]) 
     } 
 
-    if (request.method === 'POST' && url.pathname === '/api/share/cleanup') {
-      return handleCleanupShares(env)
-    }
-
     const sharePageMatch = url.pathname.match(/^\/s\/[^/]+$/) 
     if (request.method === 'GET' && sharePageMatch) { 
       return handleSharePage(request, env) 
     } 
 
     return env.ASSETS.fetch(request) 
-  },
-  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(handleCleanupShares(env))
   }
 }

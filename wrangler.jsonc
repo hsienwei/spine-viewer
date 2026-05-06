@@ -22,11 +22,6 @@
       "id": "d4b78c6581464b8c94240efee28965e9"
     }
   ],
-  "triggers": {
-    "crons": [
-      "0 * * * *"
-    ]
-  },
   "compatibility_flags": [
     "nodejs_compat"
   ]
