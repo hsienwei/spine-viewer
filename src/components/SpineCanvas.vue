@@ -11,6 +11,10 @@
       @pointerup="handlePointerUp"
       @pointercancel="handlePointerUp"
       @pointerleave="handlePointerUp"
+      @touchstart.prevent="handleTouchStart"
+      @touchmove.prevent="handleTouchMove"
+      @touchend.prevent="handleTouchEnd"
+      @touchcancel.prevent="handleTouchEnd"
     ></canvas>
     <div v-if="loading" class="loading-overlay">
       <span>Loading...</span>
@@ -86,12 +90,17 @@ const isPanning = ref(false)
 const currentBounds = ref({ width: 0, height: 0 })
 const panOffset = ref({ x: 0, y: 0 })
 const viewScale = ref(1)
+const MIN_VIEW_SCALE = 0.2
+const MAX_VIEW_SCALE = 10
 
 let activeSession: SpineRuntimeSession | null = null
 let loadRequestId = 0
 let activePointerId: number | null = null
 let lastPointerPosition = { x: 0, y: 0 }
 let resizeObserver: ResizeObserver | null = null
+const activePointers = new Map<number, { x: number; y: number }>()
+let pinchDistance: number | null = null
+let isTouchGestureActive = false
 
 const runtimeAdapters = {
   3: new Spine3RuntimeAdapter(),
@@ -201,6 +210,69 @@ const getCanvasScreenPoint = (clientX: number, clientY: number) => {
   return {
     x: ((clientX - rect.left) / rect.width) * canvas.width,
     y: ((clientY - rect.top) / rect.height) * canvas.height
+  }
+}
+
+const clampViewScale = (scale: number) => {
+  return Math.min(MAX_VIEW_SCALE, Math.max(MIN_VIEW_SCALE, scale))
+}
+
+const getPinchMetrics = () => {
+  if (activePointers.size < 2) return null
+
+  const [firstPointer, secondPointer] = Array.from(activePointers.values())
+  const dx = secondPointer.x - firstPointer.x
+  const dy = secondPointer.y - firstPointer.y
+
+  return {
+    distance: Math.hypot(dx, dy),
+    midpoint: {
+      x: (firstPointer.x + secondPointer.x) / 2,
+      y: (firstPointer.y + secondPointer.y) / 2
+    }
+  }
+}
+
+const getTouchMetrics = (touches: TouchList) => {
+  if (touches.length < 2) return null
+
+  const firstTouch = touches[0]
+  const secondTouch = touches[1]
+  const dx = secondTouch.clientX - firstTouch.clientX
+  const dy = secondTouch.clientY - firstTouch.clientY
+
+  return {
+    distance: Math.hypot(dx, dy),
+    midpoint: {
+      x: (firstTouch.clientX + secondTouch.clientX) / 2,
+      y: (firstTouch.clientY + secondTouch.clientY) / 2
+    }
+  }
+}
+
+const zoomAtClientPoint = (nextScale: number, clientX: number, clientY: number) => {
+  if (!activeSession) return
+
+  const clampedScale = clampViewScale(nextScale)
+  const anchorPoint = getCanvasScreenPoint(clientX, clientY)
+  const worldBeforeZoom = anchorPoint
+    ? activeSession.screenToWorld(anchorPoint.x, anchorPoint.y)
+    : null
+
+  activeSession.adjustViewScale(clampedScale)
+  viewScale.value = activeSession.getViewScale()
+
+  if (!anchorPoint || !worldBeforeZoom) return
+
+  const worldAfterZoom = activeSession.screenToWorld(anchorPoint.x, anchorPoint.y)
+  if (!worldAfterZoom) return
+
+  const dx = worldBeforeZoom.x - worldAfterZoom.x
+  const dy = worldBeforeZoom.y - worldAfterZoom.y
+  activeSession.panBy(dx, dy)
+  panOffset.value = {
+    x: panOffset.value.x + dx,
+    y: panOffset.value.y + dy
   }
 }
 
@@ -388,22 +460,55 @@ const handleWheel = (event: WheelEvent) => {
   if (!activeSession) return
 
   const zoomDelta = event.deltaY < 0 ? 1.1 : 0.9
-  const nextScale = Math.min(10, Math.max(0.2, activeSession.getViewScale() * zoomDelta))
-  activeSession.adjustViewScale(nextScale)
-  viewScale.value = nextScale
+  zoomAtClientPoint(activeSession.getViewScale() * zoomDelta, event.clientX, event.clientY)
 }
 
 const handlePointerDown = (event: PointerEvent) => {
   if (!canvasRef.value || !activeSession) return
+  if (isTouchGestureActive || event.pointerType === 'touch') return
 
-  activePointerId = event.pointerId
-  lastPointerPosition = { x: event.clientX, y: event.clientY }
-  isPanning.value = true
+  activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
   canvasRef.value.setPointerCapture(event.pointerId)
+
+  if (activePointers.size === 1) {
+    activePointerId = event.pointerId
+    lastPointerPosition = { x: event.clientX, y: event.clientY }
+    isPanning.value = true
+    pinchDistance = null
+    return
+  }
+
+  if (activePointers.size >= 2) {
+    activePointerId = null
+    isPanning.value = false
+    pinchDistance = getPinchMetrics()?.distance ?? null
+  }
 }
 
 const handlePointerMove = (event: PointerEvent) => {
-  if (!isPanning.value || activePointerId !== event.pointerId || !activeSession) return
+  if (isTouchGestureActive || event.pointerType === 'touch') return
+  if (!activeSession || !activePointers.has(event.pointerId)) return
+
+  activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
+
+  if (activePointers.size >= 2) {
+    const pinchMetrics = getPinchMetrics()
+    if (!pinchMetrics) return
+
+    if (pinchDistance && pinchMetrics.distance > 0) {
+      const scaleFactor = pinchMetrics.distance / pinchDistance
+      zoomAtClientPoint(
+        activeSession.getViewScale() / scaleFactor,
+        pinchMetrics.midpoint.x,
+        pinchMetrics.midpoint.y
+      )
+    }
+
+    pinchDistance = pinchMetrics.distance
+    return
+  }
+
+  if (!isPanning.value || activePointerId !== event.pointerId) return
 
   const previousPoint = getCanvasScreenPoint(lastPointerPosition.x, lastPointerPosition.y)
   const currentPoint = getCanvasScreenPoint(event.clientX, event.clientY)
@@ -427,13 +532,115 @@ const handlePointerMove = (event: PointerEvent) => {
 }
 
 const handlePointerUp = (event: PointerEvent) => {
-  if (activePointerId !== event.pointerId) return
+  if (isTouchGestureActive || event.pointerType === 'touch') return
+  activePointers.delete(event.pointerId)
 
   if (canvasRef.value?.hasPointerCapture(event.pointerId)) {
     canvasRef.value.releasePointerCapture(event.pointerId)
   }
 
+  if (activePointers.size >= 2) {
+    activePointerId = null
+    isPanning.value = false
+    pinchDistance = getPinchMetrics()?.distance ?? null
+    return
+  }
+
+  if (activePointers.size === 1) {
+    const [pointerId, pointerPosition] = Array.from(activePointers.entries())[0]
+    activePointerId = pointerId
+    lastPointerPosition = { x: pointerPosition.x, y: pointerPosition.y }
+    isPanning.value = true
+    pinchDistance = null
+    return
+  }
+
   activePointerId = null
+  isPanning.value = false
+  pinchDistance = null
+}
+
+const handleTouchStart = (event: TouchEvent) => {
+  if (!activeSession) return
+
+  isTouchGestureActive = true
+
+  if (event.touches.length >= 2) {
+    isPanning.value = false
+    activePointerId = null
+    pinchDistance = getTouchMetrics(event.touches)?.distance ?? null
+    return
+  }
+
+  if (event.touches.length === 1) {
+    const touch = event.touches[0]
+    lastPointerPosition = { x: touch.clientX, y: touch.clientY }
+    isPanning.value = true
+    pinchDistance = null
+  }
+}
+
+const handleTouchMove = (event: TouchEvent) => {
+  if (!activeSession) return
+
+  if (event.touches.length >= 2) {
+    const touchMetrics = getTouchMetrics(event.touches)
+    if (!touchMetrics) return
+
+    if (pinchDistance && touchMetrics.distance > 0) {
+      const scaleFactor = touchMetrics.distance / pinchDistance
+      zoomAtClientPoint(
+        activeSession.getViewScale() / scaleFactor,
+        touchMetrics.midpoint.x,
+        touchMetrics.midpoint.y
+      )
+    }
+
+    pinchDistance = touchMetrics.distance
+    isPanning.value = false
+    return
+  }
+
+  if (event.touches.length !== 1 || !isPanning.value) return
+
+  const touch = event.touches[0]
+  const previousPoint = getCanvasScreenPoint(lastPointerPosition.x, lastPointerPosition.y)
+  const currentPoint = getCanvasScreenPoint(touch.clientX, touch.clientY)
+
+  if (!previousPoint || !currentPoint) return
+
+  const previousWorld = activeSession.screenToWorld(previousPoint.x, previousPoint.y)
+  const currentWorld = activeSession.screenToWorld(currentPoint.x, currentPoint.y)
+
+  if (!previousWorld || !currentWorld) return
+
+  const dx = previousWorld.x - currentWorld.x
+  const dy = previousWorld.y - currentWorld.y
+  activeSession.panBy(dx, dy)
+  panOffset.value = {
+    x: panOffset.value.x + dx,
+    y: panOffset.value.y + dy
+  }
+  lastPointerPosition = { x: touch.clientX, y: touch.clientY }
+}
+
+const handleTouchEnd = (event: TouchEvent) => {
+  if (event.touches.length >= 2) {
+    pinchDistance = getTouchMetrics(event.touches)?.distance ?? null
+    isPanning.value = false
+    return
+  }
+
+  if (event.touches.length === 1) {
+    const touch = event.touches[0]
+    lastPointerPosition = { x: touch.clientX, y: touch.clientY }
+    pinchDistance = null
+    isPanning.value = true
+    return
+  }
+
+  isTouchGestureActive = false
+  pinchDistance = null
   isPanning.value = false
 }
 
