@@ -713,6 +713,7 @@ onUnmounted(() => {
   .playback-overlay {
     right: 14px;
     bottom: 14px;
+    width: min(420px, calc(100% - 20px));
   }
 }
 
@@ -722,6 +723,39 @@ onUnmounted(() => {
     right: 10px;
     bottom: 10px;
     width: auto;
+    gap: 12px;
+    padding: 12px 12px 14px;
+  }
+
+  .track-selector-row {
+    gap: 8px;
+  }
+
+  .track-selector-label {
+    font-size: 10px;
+  }
+
+  .time-current {
+    font-size: 17px;
+  }
+
+  .time-total,
+  .time-sep {
+    font-size: 12px;
+  }
+
+  .controls-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .speed-group {
+    flex-basis: 100%;
+  }
+
+  .speed-label {
+    width: 28px;
+    font-size: 10px;
   }
 
   .timeline-tooltip {

@@ -1,6 +1,31 @@
 <template>
   <div class="spine-viewer">
-    <aside class="sidebar">
+    <button
+      v-if="!isSidebarOpen"
+      type="button"
+      class="mobile-sidebar-toggle"
+      :aria-expanded="false"
+      :aria-label="isSharePreview ? 'Open shared preview menu' : 'Open menu'"
+      @click="toggleSidebar"
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M3 4h10M3 8h10M3 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+
+    <div
+      v-if="isMobileViewport && isSidebarOpen"
+      class="mobile-sidebar-scrim"
+      @click="closeSidebar"
+    />
+
+    <aside
+      class="sidebar"
+      :class="{
+        'sidebar--share-preview': isSharePreview,
+        'sidebar--mobile-open': isSidebarOpen
+      }"
+    >
       <div class="sidebar-brand">
         <div class="sidebar-brand-copy">
           <div class="brand-title">
@@ -9,6 +34,15 @@
           </div>
           <span class="brand-version">v{{ appVersion }}</span>
         </div>
+        <button
+          v-if="isMobileViewport && isSidebarOpen"
+          type="button"
+          class="sidebar-close-btn"
+          aria-label="Close sidebar"
+          @click="closeSidebar"
+        >
+          Close
+        </button>
         <button class="theme-toggle" @click="toggleTheme" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <svg v-if="isDark" width="14" height="14" viewBox="0 0 14 14" fill="none">
             <circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.4"/>
@@ -21,7 +55,7 @@
       </div>
 
       <div class="sidebar-content">
-        <div class="sidebar-panel">
+        <div v-if="!isSharePreview" class="sidebar-panel">
           <button
             type="button"
             class="sidebar-panel-header"
@@ -39,7 +73,7 @@
           </div>
         </div>
 
-        <div v-if="animations.length > 0" class="sidebar-panel">
+        <div v-if="!isSharePreview && animations.length > 0" class="sidebar-panel">
           <button
             type="button"
             class="sidebar-panel-header"
@@ -77,7 +111,7 @@
           </div>
         </div>
 
-        <div v-if="shareHistory.length > 0" class="sidebar-panel">
+        <div v-if="!isSharePreview && shareHistory.length > 0" class="sidebar-panel">
           <button
             type="button"
             class="sidebar-panel-header"
@@ -131,7 +165,48 @@
           </div>
         </div>
 
-        <div v-if="hasStructurePanel" class="sidebar-panel">
+        <div v-if="isSharePreview && shareManifest" class="sidebar-panel">
+          <div class="sidebar-panel-header sidebar-panel-header--static">
+            <span>Shared Preview</span>
+          </div>
+          <div class="sidebar-panel-body">
+            <div class="share-preview-summary">
+              <div class="share-preview-title">{{ shareManifest.files.skeleton.name }}</div>
+              <div class="share-preview-copy">
+                Expires {{ formatShareDate(shareManifest.expiresAt) }}
+              </div>
+            </div>
+            <div v-if="animations.length > 0 || skins.length > 0" class="share-preview-controls">
+              <label v-if="animations.length > 0" class="share-preview-field">
+                <span class="share-preview-label">Animation</span>
+                <div class="share-preview-select-wrap">
+                  <select
+                    class="share-preview-select"
+                    :value="activeShareAnimation"
+                    @change="handleShareAnimationChange(($event.target as HTMLSelectElement).value)"
+                  >
+                    <option v-for="anim in animations" :key="anim" :value="anim">{{ anim }}</option>
+                  </select>
+                </div>
+              </label>
+
+              <label v-if="skins.length > 0" class="share-preview-field">
+                <span class="share-preview-label">Skin</span>
+                <div class="share-preview-select-wrap">
+                  <select
+                    class="share-preview-select"
+                    :value="currentSkin"
+                    @change="handleSkinChange(($event.target as HTMLSelectElement).value)"
+                  >
+                    <option v-for="skin in skins" :key="skin" :value="skin">{{ skin }}</option>
+                  </select>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="!isSharePreview && hasStructurePanel" class="sidebar-panel">
           <button 
             type="button" 
             class="sidebar-panel-header" 
@@ -159,7 +234,7 @@
 
       </div> 
 
-      <div class="sidebar-footer"> 
+      <div v-if="!isSharePreview" class="sidebar-footer"> 
         <button
           v-if="canShare"
           type="button"
@@ -314,6 +389,8 @@ const isLoadFilesPanelOpen = ref(true)
 const isControlPanelOpen = ref(true)
 const isStructurePanelOpen = ref(true)
 const isInfoOpen = ref(false)
+const isMobileViewport = ref(false)
+const isSidebarOpen = ref(true)
 
 const animations = ref<string[]>([])
 const skins = ref<string[]>([])
@@ -364,6 +441,7 @@ interface RuntimeNotificationRecord {
 
 const runtimeNotifications = ref<RuntimeNotificationRecord[]>([])
 
+const isSharePreview = computed(() => !!shareToken.value)
 const hasStructurePanel = computed(() => structure.value.bones.length > 0)  
 const canShare = computed(() => sourceFiles.value.length > 0 && animations.value.length > 0)  
 const shareStatusText = computed(() => {  
@@ -476,6 +554,9 @@ const visibleRuntimeNotifications = computed(() => {
     .filter(item => item.visible && item.trackIndex === overlayTrackIndex.value)
     .slice(0, 3)
 })
+const activeShareAnimation = computed(() => {
+  return animationTracks.value.find(track => track.trackIndex === 0)?.animationName || animationName.value || animations.value[0] || ''
+})
 const overlayTrackOptions = computed(() => {
   const indices = new Set<number>()
   animationTracks.value.forEach(track => indices.add(track.trackIndex))
@@ -504,10 +585,36 @@ const isDark = ref(true)
 let runtimeNotificationId = 0
 const runtimeNotificationTimers = new Map<number, number>()
 
+const updateViewportState = () => {
+  const nextIsMobileViewport = window.innerWidth <= 640
+  if (nextIsMobileViewport !== isMobileViewport.value) {
+    isMobileViewport.value = nextIsMobileViewport
+    isSidebarOpen.value = !nextIsMobileViewport
+    return
+  }
+
+  if (!nextIsMobileViewport) {
+    isSidebarOpen.value = true
+  }
+}
+
 const handleWindowKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
     isInfoOpen.value = false
+    if (isMobileViewport.value) {
+      isSidebarOpen.value = false
+    }
   }
+}
+
+const closeSidebar = () => {
+  if (!isMobileViewport.value) return
+  isSidebarOpen.value = false
+}
+
+const toggleSidebar = () => {
+  if (!isMobileViewport.value) return
+  isSidebarOpen.value = !isSidebarOpen.value
 }
 
 const applyTheme = (dark: boolean) => {
@@ -558,6 +665,7 @@ const loadSharedSession = async (token: string) => {
       ...sharedFiles.textureFiles
     ]
     isLoadFilesPanelOpen.value = false
+    closeSidebar()
   } catch (error) { 
     shareManifest.value = null 
     shareError.value = error instanceof Error ? normalizeShareErrorMessage(error.message) : 'Failed to load shared assets' 
@@ -572,8 +680,10 @@ onMounted(() => {
   } else {
     isDark.value = !window.matchMedia('(prefers-color-scheme: light)').matches
   }
+  updateViewportState()
   applyTheme(isDark.value)
   window.addEventListener('keydown', handleWindowKeydown)
+  window.addEventListener('resize', updateViewportState)
 
   const initialShareToken = extractShareTokenFromPath(window.location.pathname)
   if (initialShareToken) {
@@ -583,6 +693,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleWindowKeydown)
+  window.removeEventListener('resize', updateViewportState)
   runtimeNotificationTimers.forEach(timeoutId => window.clearTimeout(timeoutId))
   runtimeNotificationTimers.clear()
 })
@@ -595,6 +706,7 @@ const handleFileSelected = (payload: { files: File[] }) => {
   shareExpiresAt.value = ''
   shareError.value = ''
   resetViewerState()
+  closeSidebar()
 }
 
 const clearRuntimeNotifications = () => {
@@ -636,6 +748,21 @@ const handleTracksChange = (tracks: SpineTrackEntry[]) => {
     overlayTrackIndex.value = normalizedTracks[0]?.trackIndex || 0
   }
   syncPrimaryTrackState(normalizedTracks)
+}
+
+const handleShareAnimationChange = (name: string) => {
+  if (!name) return
+
+  const primaryTrack = animationTracks.value.find(track => track.trackIndex === 0)
+  const nextTracks: SpineTrackEntry[] = primaryTrack
+    ? animationTracks.value.map(track => (
+      track.trackIndex === 0
+        ? { ...track, animationName: name }
+        : track
+    ))
+    : [{ trackIndex: 0, animationName: name, loop: true, mixDuration: 0 }]
+
+  handleTracksChange(nextTracks)
 }
 
 const handleSkinChange = (name: string) => {
@@ -1023,10 +1150,19 @@ html, body, #app {
 
 .spine-viewer {
   display: flex;
+  position: relative;
   width: 100%;
   height: 100%;
   background: var(--bg-base);
   color: var(--text-primary);
+}
+
+.mobile-sidebar-toggle {
+  display: none;
+}
+
+.mobile-sidebar-scrim {
+  display: none;
 }
 
 .sidebar {
@@ -1225,6 +1361,15 @@ html, body, #app {
   background: rgba(255, 255, 255, 0.02);
 }
 
+.sidebar-panel-header--static {
+  cursor: default;
+}
+
+.sidebar-panel-header--static:hover {
+  color: var(--text-secondary);
+  background: transparent;
+}
+
 .panel-chevron {
   color: var(--text-muted);
   transition: transform var(--transition), color var(--transition);
@@ -1238,6 +1383,67 @@ html, body, #app {
 
 .sidebar-panel-body {
   overflow: visible;
+}
+
+.share-preview-summary {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px 14px;
+}
+
+.share-preview-title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.share-preview-copy {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.share-preview-controls {
+  display: grid;
+  gap: 10px;
+  padding: 0 14px 14px;
+}
+
+.share-preview-field {
+  display: grid;
+  gap: 6px;
+}
+
+.share-preview-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.share-preview-select-wrap {
+  position: relative;
+}
+
+.share-preview-select {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  appearance: none;
+}
+
+.share-preview-select:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 .share-history-list {
@@ -1347,6 +1553,10 @@ html, body, #app {
   background: var(--accent-dim);
 }
 
+.sidebar-close-btn {
+  display: none;
+}
+
 .mini-action-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -1449,5 +1659,138 @@ html, body, #app {
   font-size: 13px;
   line-height: 1.75;
   color: var(--text-secondary);
+}
+
+@media (max-width: 900px) {
+  .main-content {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .mobile-sidebar-toggle {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 22;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg-panel) 78%, transparent);
+    backdrop-filter: blur(10px);
+    color: var(--text-secondary);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    cursor: pointer;
+    transition: color var(--transition), border-color var(--transition), background var(--transition);
+  }
+
+  .mobile-sidebar-toggle:hover {
+    color: var(--accent);
+    border-color: var(--border-glow);
+    background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+  }
+
+  .mobile-sidebar-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: block;
+    background: rgba(7, 6, 5, 0.42);
+    backdrop-filter: blur(1px);
+  }
+
+  .sidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(86vw, 320px);
+    max-width: 320px;
+    height: 100%;
+    border-right: 1px solid var(--border);
+    border-bottom: 0;
+    z-index: 21;
+    transform: translateX(-100%);
+    transition: transform var(--transition);
+    box-shadow: 18px 0 40px rgba(0, 0, 0, 0.28);
+  }
+
+  .sidebar--mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-brand {
+    padding: 14px 14px 12px;
+  }
+
+  .sidebar-close-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .brand-spine {
+    font-size: 15px;
+  }
+
+  .brand-viewer {
+    font-size: 9px;
+    letter-spacing: 0.22em;
+  }
+
+  .sidebar-panel-header {
+    padding: 10px 14px;
+  }
+
+  .share-error-banner {
+    margin: 10px 12px 0;
+  }
+
+  .sidebar--share-preview .sidebar-brand {
+    padding-bottom: 10px;
+  }
+
+  .sidebar--share-preview .sidebar-content {
+    max-height: none;
+  }
+
+  .sidebar--share-preview .sidebar-panel {
+    border-bottom: 0;
+  }
+
+  .sidebar--share-preview .sidebar-panel-header {
+    padding-bottom: 8px;
+  }
+
+  .sidebar--share-preview .share-preview-summary {
+    gap: 4px;
+    padding: 0 14px 12px;
+  }
+
+  .sidebar--share-preview .share-preview-title {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .sidebar--share-preview .share-preview-copy {
+    font-size: 11px;
+  }
 }
 </style>
