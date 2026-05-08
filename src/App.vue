@@ -61,7 +61,7 @@
             class="sidebar-panel-header"
             @click="isLoadFilesPanelOpen = !isLoadFilesPanelOpen"
           >
-            <span>Load Files</span>
+            <span>Load</span>
             <svg class="panel-chevron" :class="{ open: isLoadFilesPanelOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -77,27 +77,45 @@
           <button
             type="button"
             class="sidebar-panel-header"
-            @click="isControlPanelOpen = !isControlPanelOpen"
+            @click="isAnimatePanelOpen = !isAnimatePanelOpen"
           >
-            <span>Controls</span>
-            <svg class="panel-chevron" :class="{ open: isControlPanelOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <span>Animate</span>
+            <svg class="panel-chevron" :class="{ open: isAnimatePanelOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
-          <div v-show="isControlPanelOpen" class="sidebar-panel-body">
+          <div v-show="isAnimatePanelOpen" class="sidebar-panel-body">
             <ControlPanel
+              mode="animate"
               @tracks-change="handleTracksChange"
+              :animations="animations"
+              :tracks="animationTracks"
+              :is-playing="isPlaying"
+            />
+          </div>
+        </div>
+
+        <div v-if="!isSharePreview && hasInspectPanel" class="sidebar-panel">
+          <button
+            type="button"
+            class="sidebar-panel-header"
+            @click="isInspectPanelOpen = !isInspectPanelOpen"
+          >
+            <span>Inspect</span>
+            <svg class="panel-chevron" :class="{ open: isInspectPanelOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div v-show="isInspectPanelOpen" class="sidebar-panel-body">
+            <ControlPanel
+              mode="inspect"
               @skin-change="handleSkinChange"
               @debug-option-change="handleDebugOptionChange"
               @premultiply-alpha-change="handlePremultipliedAlphaChange"
               @texture-filtering-change="handleTextureFilteringChange"
               :animations="animations"
               :skins="skins"
-              :tracks="animationTracks"
-              :is-playing="isPlaying"
               :current-skin="currentSkin"
-              :current-time="currentTime"
-              :duration="duration"
               :draw-call="drawCall"
               :event-marker-count="currentAnimationMarkers.length"
               :detected-version="detectedVersion"
@@ -108,59 +126,13 @@
               :premultiplied-alpha="premultipliedAlpha"
               :texture-filtering="textureFiltering"
             />
-          </div>
-        </div>
-
-        <div v-if="!isSharePreview && shareHistory.length > 0" class="sidebar-panel">
-          <button
-            type="button"
-            class="sidebar-panel-header"
-            @click="isShareHistoryOpen = !isShareHistoryOpen"
-          >
-            <span>Share History</span>
-            <svg class="panel-chevron" :class="{ open: isShareHistoryOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-          <div v-show="isShareHistoryOpen" class="sidebar-panel-body">
-            <div class="share-history-list">
-              <div 
-                v-for="item in shareHistory"  
-                :key="item.token"  
-                class="share-history-item"  
-                :class="`share-history-item--${getShareHistoryStatus(item)}`"  
-              >  
-                <div class="share-history-meta">  
-                  <div class="share-history-title-row">
-                    <span class="share-history-title">{{ item.skeletonName }}</span>
-                    <span class="share-history-status" :class="`share-history-status--${getShareHistoryStatus(item)}`">
-                      {{ getShareHistoryStatusLabel(item) }}
-                    </span>
-                  </div>
-                  <span class="share-history-subtitle">  
-                    Expires {{ formatShareDate(item.expiresAt) }}  
-                  </span>  
-                </div>  
-                <div class="share-history-actions"> 
-                  <button type="button" class="mini-action-btn" :disabled="!isShareHistoryActionAllowed(item)" @click="openShareLink(item.shareUrl)">Open</button> 
-                  <button type="button" class="mini-action-btn" :disabled="!isShareHistoryActionAllowed(item)" @click="copyShareLink(item.shareUrl)">Copy</button> 
-                  <button 
-                    type="button" 
-                    class="mini-action-btn danger" 
-                    :disabled="getShareHistoryStatus(item) !== 'active' || !!item.revoking" 
-                    @click="handleRevokeShare(item.token)" 
-                  > 
-                    {{ item.revoking ? 'Revoking...' : getShareHistoryRevokeLabel(item) }} 
-                  </button> 
-                  <button 
-                    type="button" 
-                    class="mini-action-btn danger" 
-                    @click="deleteShareHistory(item.token)"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
+            <div class="inspect-subsection">
+              <StructurePanel
+                @bone-selected="handleBoneSelected"
+                @slot-selected="handleSlotSelected"
+                :structure="structure"
+                :selection="selection"
+              />
             </div>
           </div>
         </div>
@@ -206,56 +178,116 @@
           </div>
         </div>
 
-        <div v-if="!isSharePreview && hasStructurePanel" class="sidebar-panel">
-          <button 
-            type="button" 
-            class="sidebar-panel-header" 
-            @click="isStructurePanelOpen = !isStructurePanelOpen"
-          >
-            <span>Skeleton</span>
-            <svg class="panel-chevron" :class="{ open: isStructurePanelOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-          <div v-show="isStructurePanelOpen" class="sidebar-panel-body">
-            <StructurePanel
-              @bone-selected="handleBoneSelected"
-              @slot-selected="handleSlotSelected"
-              :structure="structure"
-              :selection="selection"
-            />
+        <div v-if="isSharePreview && shareError && !shareManifest" class="sidebar-panel">
+          <div class="sidebar-panel-header sidebar-panel-header--static">
+            <span>Shared Preview</span>
+          </div>
+          <div class="sidebar-panel-body">
+            <div class="share-error-banner">
+              <div class="share-error-title">Share load failed</div>
+              <div class="share-error-copy">{{ shareError }}</div>
+              <button
+                type="button"
+                class="sidebar-link sidebar-link-button"
+                @click="handleExitSharePreview"
+              >
+                Back to Viewer
+              </button>
+            </div>
           </div>
         </div>
 
-        <div v-if="shareError && !shareManifest" class="share-error-banner">
-          <div class="share-error-title">Share load failed</div>
-          <div class="share-error-copy">{{ shareError }}</div>
+        <div v-if="!isSharePreview" class="sidebar-panel">
+          <button 
+            type="button" 
+            class="sidebar-panel-header" 
+            @click="isSharePanelOpen = !isSharePanelOpen"
+          >
+            <span>Share</span>
+            <svg class="panel-chevron" :class="{ open: isSharePanelOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div v-show="isSharePanelOpen" class="sidebar-panel-body">
+            <div class="share-panel-body">
+              <button
+                v-if="canShare"
+                type="button"
+                class="share-primary-btn"
+                :disabled="isSharing"
+                @click="handleCreateShare"
+              >
+                {{ isSharing ? 'Sharing...' : 'Create Share Link' }}
+              </button>
+              <p v-if="shareStatusText" class="sidebar-status" :class="{ error: !!shareError }">
+                {{ shareStatusText }}
+              </p>
+              <a
+                v-if="shareUrl"
+                class="sidebar-link"
+                :href="shareUrl"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open Share Link
+              </a>
+
+              <div v-if="shareHistory.length > 0" class="inspect-subsection inspect-subsection--share-history">
+                <div class="inspect-subsection-header">
+                  <span class="inspect-subsection-title">Share History</span>
+                </div>
+                <div class="share-history-list">
+                  <div
+                    v-for="item in shareHistory"
+                    :key="item.token"
+                    class="share-history-item"
+                    :class="`share-history-item--${getShareHistoryStatus(item)}`"
+                  >
+                    <div class="share-history-meta">
+                      <div class="share-history-title-row">
+                        <span class="share-history-title">{{ item.skeletonName }}</span>
+                        <span class="share-history-status" :class="`share-history-status--${getShareHistoryStatus(item)}`">
+                          {{ getShareHistoryStatusLabel(item) }}
+                        </span>
+                      </div>
+                      <span class="share-history-subtitle">
+                        Expires {{ formatShareDate(item.expiresAt) }}
+                      </span>
+                    </div>
+                    <div class="share-history-actions">
+                      <button type="button" class="mini-action-btn" :disabled="!isShareHistoryActionAllowed(item)" @click="openShareLink(item.shareUrl)">Open</button>
+                      <button type="button" class="mini-action-btn" :disabled="!isShareHistoryActionAllowed(item)" @click="copyShareLink(item.shareUrl)">Copy</button>
+                      <button
+                        type="button"
+                        class="mini-action-btn danger"
+                        :disabled="getShareHistoryStatus(item) !== 'active' || !!item.revoking"
+                        @click="handleRevokeShare(item.token)"
+                      >
+                        {{ item.revoking ? 'Revoking...' : getShareHistoryRevokeLabel(item) }}
+                      </button>
+                      <button
+                        type="button"
+                        class="mini-action-btn danger"
+                        @click="deleteShareHistory(item.token)"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="shareError && !shareManifest" class="share-error-banner">
+                <div class="share-error-title">Share load failed</div>
+                <div class="share-error-copy">{{ shareError }}</div>
+              </div>
+            </div>
+          </div>
         </div>
 
-      </div> 
+      </div>
 
-      <div v-if="!isSharePreview" class="sidebar-footer"> 
-        <button
-          v-if="canShare"
-          type="button"
-          class="sidebar-link sidebar-link-button"
-          :disabled="isSharing"
-          @click="handleCreateShare"
-        >
-          {{ isSharing ? 'Sharing...' : 'Share' }}
-        </button>
-        <p v-if="shareStatusText" class="sidebar-status" :class="{ error: !!shareError }">
-          {{ shareStatusText }}
-        </p>
-        <a
-          v-if="shareUrl"
-          class="sidebar-link"
-          :href="shareUrl"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Open Share Link
-        </a>
+      <div v-if="!isSharePreview" class="sidebar-footer">
         <button
           type="button"
           class="sidebar-link sidebar-link-button"
@@ -271,15 +303,15 @@
         >
           Privacy Policy
         </a>
-        <a 
-          class="sidebar-link" 
-          :href="termsOfServiceUrl" 
-          target="_blank" 
-          rel="noreferrer" 
-        > 
-          Terms of Service 
-        </a> 
-      </div> 
+        <a
+          class="sidebar-link"
+          :href="termsOfServiceUrl"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Terms of Service
+        </a>
+      </div>
     </aside> 
 
     <main class="main-content">
@@ -386,8 +418,9 @@ const premultipliedAlpha = ref(true)
 const textureFiltering = ref<SpineTextureFiltering>(DEFAULT_SPINE_TEXTURE_FILTERING)
 const spineCanvasRef = ref<InstanceType<typeof SpineCanvas> | null>(null)
 const isLoadFilesPanelOpen = ref(true)
-const isControlPanelOpen = ref(true)
-const isStructurePanelOpen = ref(true)
+const isAnimatePanelOpen = ref(true)
+const isInspectPanelOpen = ref(true)
+const isSharePanelOpen = ref(false)
 const isInfoOpen = ref(false)
 const isMobileViewport = ref(false)
 const isSidebarOpen = ref(true)
@@ -411,7 +444,6 @@ const shareExpiresAt = ref('')
 const shareError = ref('')
 const shareToken = ref('')
 const shareManifest = ref<ShareManifest | null>(null)
-const isShareHistoryOpen = ref(true)
 
 interface ShareHistoryEntry {
   token: string
@@ -427,6 +459,7 @@ interface ShareHistoryEntry {
 
 const SHARE_HISTORY_KEY = 'spine-viewer-share-history'
 const shareHistory = ref<ShareHistoryEntry[]>([])
+let shareHistoryPruneTimer: number | null = null
 
 interface RuntimeNotificationRecord {
   id: number
@@ -443,6 +476,12 @@ const runtimeNotifications = ref<RuntimeNotificationRecord[]>([])
 
 const isSharePreview = computed(() => !!shareToken.value)
 const hasStructurePanel = computed(() => structure.value.bones.length > 0)  
+const hasInspectPanel = computed(() => {
+  return hasStructurePanel.value
+    || skins.value.length > 0
+    || animations.value.length > 0
+    || runtimeVersion.value !== null
+})
 const canShare = computed(() => sourceFiles.value.length > 0 && animations.value.length > 0)  
 const shareStatusText = computed(() => {  
   if (shareError.value) return shareError.value
@@ -462,6 +501,42 @@ const getShareHistoryStatus = (item: ShareHistoryEntry) => {
   if (item.revokedAt) return 'revoked'
   if (Date.parse(item.expiresAt) <= Date.now()) return 'expired'
   return 'active'
+}
+
+const clearShareHistoryPruneTimer = () => {
+  if (shareHistoryPruneTimer === null) return
+  window.clearTimeout(shareHistoryPruneTimer)
+  shareHistoryPruneTimer = null
+}
+
+const pruneShareHistory = () => {
+  const nextEntries = sortShareHistory(
+    shareHistory.value.filter(item => getShareHistoryStatus(item) === 'active')
+  )
+  const changed = nextEntries.length !== shareHistory.value.length
+  shareHistory.value = nextEntries
+  return changed
+}
+
+const scheduleShareHistoryPrune = () => {
+  clearShareHistoryPruneTimer()
+
+  const nextExpiryAt = shareHistory.value
+    .filter(item => !item.revokedAt)
+    .map(item => Date.parse(item.expiresAt))
+    .filter(expiresAt => Number.isFinite(expiresAt) && expiresAt > Date.now())
+    .sort((a, b) => a - b)[0]
+
+  if (!nextExpiryAt) return
+
+  const delay = Math.max(nextExpiryAt - Date.now() + 1000, 1000)
+  shareHistoryPruneTimer = window.setTimeout(() => {
+    const changed = pruneShareHistory()
+    if (changed) {
+      persistShareHistory()
+    }
+    scheduleShareHistoryPrune()
+  }, delay)
 }
 
 const getShareHistoryStatusLabel = (item: ShareHistoryEntry) => {
@@ -491,33 +566,47 @@ const loadShareHistory = () => {
     shareHistory.value = sortShareHistory(
       parsed.filter(item => item && typeof item.token === 'string' && typeof item.shareUrl === 'string')
     )
+    if (pruneShareHistory()) {
+      persistShareHistory()
+    }
   } catch {
     shareHistory.value = []
   }
+  scheduleShareHistoryPrune()
 }
 
 const persistShareHistory = () => {
-  localStorage.setItem(SHARE_HISTORY_KEY, JSON.stringify(shareHistory.value))
+  if (shareHistory.value.length === 0) {
+    localStorage.removeItem(SHARE_HISTORY_KEY)
+  } else {
+    localStorage.setItem(SHARE_HISTORY_KEY, JSON.stringify(shareHistory.value))
+  }
 }
 
 const upsertShareHistory = (entry: ShareHistoryEntry) => {
   const nextEntries = shareHistory.value.filter(item => item.token !== entry.token)
   shareHistory.value = sortShareHistory([entry, ...nextEntries])
+  pruneShareHistory()
   persistShareHistory()
+  scheduleShareHistoryPrune()
 }
 
 const markShareHistoryRevoked = (token: string, revokedAt: string) => { 
-  shareHistory.value = shareHistory.value.map(item => ( 
-    item.token === token 
-      ? { ...item, revokedAt, revoking: false } 
-      : item 
-  )) 
+  shareHistory.value = shareHistory.value
+    .map(item => (
+      item.token === token
+        ? { ...item, revokedAt, revoking: false }
+        : item
+    ))
+    .filter(item => !item.revokedAt)
   persistShareHistory() 
+  scheduleShareHistoryPrune()
 } 
 
 const deleteShareHistory = (token: string) => {
   shareHistory.value = shareHistory.value.filter(item => item.token !== token)
   persistShareHistory()
+  scheduleShareHistoryPrune()
 }
 
 const formatShareDate = (value: string) => { 
@@ -672,6 +761,17 @@ const loadSharedSession = async (token: string) => {
   } 
 } 
 
+const handleExitSharePreview = () => {
+  shareManifest.value = null
+  shareToken.value = ''
+  shareUrl.value = ''
+  shareExpiresAt.value = ''
+  shareError.value = ''
+  sourceFiles.value = []
+  resetViewerState()
+  window.history.replaceState({}, '', '/')
+}
+
 onMounted(() => { 
   loadShareHistory()
   const saved = localStorage.getItem(THEME_KEY) 
@@ -696,6 +796,7 @@ onUnmounted(() => {
   window.removeEventListener('resize', updateViewportState)
   runtimeNotificationTimers.forEach(timeoutId => window.clearTimeout(timeoutId))
   runtimeNotificationTimers.clear()
+  clearShareHistoryPruneTimer()
 })
 
 const handleFileSelected = (payload: { files: File[] }) => {
@@ -1385,6 +1486,61 @@ html, body, #app {
   overflow: visible;
 }
 
+.inspect-subsection {
+  margin: 0 14px 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-muted);
+}
+
+.inspect-subsection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.inspect-subsection-title {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.share-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 14px 16px;
+}
+
+.share-primary-btn {
+  min-height: 38px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-glow);
+  border-radius: var(--radius-md);
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), color var(--transition), opacity var(--transition);
+}
+
+.share-primary-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.share-primary-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .share-preview-summary {
   display: grid;
   gap: 6px;
@@ -1450,7 +1606,10 @@ html, body, #app {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px 14px 14px;
+}
+
+.inspect-subsection--share-history .share-history-list {
+  padding: 0;
 }
 
 .share-history-item {
@@ -1759,8 +1918,17 @@ html, body, #app {
     padding: 10px 14px;
   }
 
+  .inspect-subsection {
+    margin: 0 12px 12px;
+    padding-top: 12px;
+  }
+
+  .share-panel-body {
+    padding: 12px;
+  }
+
   .share-error-banner {
-    margin: 10px 12px 0;
+    margin: 0;
   }
 
   .sidebar--share-preview .sidebar-brand {

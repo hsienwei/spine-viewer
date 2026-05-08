@@ -1,6 +1,6 @@
 <template>
   <div class="control-panel">
-    <section v-if="animations && animations.length > 0" class="section">
+    <section v-if="mode === 'animate' && animations && animations.length > 0" class="section">
       <div class="section-heading">
         <h3 class="section-title">Animation Tracks</h3>
         <button type="button" class="mini-action-btn" @click="addTrack">Add</button>
@@ -68,111 +68,113 @@
       </div>
     </section>
 
-    <section v-if="skins && skins.length > 0" class="section">
-      <h3 class="section-title">Skin</h3>
-      <div class="select-wrapper">
-        <select v-model="localSkin" class="select-input" @change="emitSkinChange">
-          <option v-for="skin in skins" :key="skin" :value="skin">{{ skin }}</option>
-        </select>
-        <svg class="select-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-    </section>
-
-    <section v-if="animations && animations.length > 0" class="section">
-      <h3 class="section-title">Info</h3>
-      <div class="info-grid">
-        <div class="info-row">
-          <span class="info-label">Draw Calls</span>
-          <span class="info-value mono">{{ drawCall || 0 }}</span>
+    <template v-if="mode === 'inspect'">
+      <section v-if="showOverviewSection" class="section">
+        <h3 class="section-title">Overview</h3>
+        <div v-if="skins && skins.length > 0" class="select-wrapper">
+          <select v-model="localSkin" class="select-input" @change="emitSkinChange">
+            <option v-for="skin in skins" :key="skin" :value="skin">{{ skin }}</option>
+          </select>
+          <svg class="select-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </div>
-        <div class="info-row">
-          <span class="info-label">Event Markers</span>
-          <span class="info-value mono">{{ eventMarkerCount }}</span>
+        <div class="info-grid">
+          <div class="info-row">
+            <span class="info-label">Skin</span>
+            <span class="info-value">{{ localSkin || 'Default' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Draw Calls</span>
+            <span class="info-value mono">{{ drawCall || 0 }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Event Markers</span>
+            <span class="info-value mono">{{ eventMarkerCount || 0 }}</span>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section v-if="runtimeVersion !== null" class="section">
-      <h3 class="section-title">Render</h3>
-      <label class="toggle-row">
-        <span class="toggle-label-text">XY Axes</span>
-        <span class="toggle-switch">
-          <input
-            type="checkbox"
-            class="toggle-input"
-            :checked="resolvedDebugOptions.showAxes"
-            @change="emitDebugOptionChange('showAxes', $event)"
-          />
-          <span class="toggle-track">
-            <span class="toggle-thumb"></span>
+      <section v-if="runtimeVersion !== null" class="section">
+        <h3 class="section-title">Display</h3>
+        <label class="toggle-row">
+          <span class="toggle-label-text">XY Axes</span>
+          <span class="toggle-switch">
+            <input
+              type="checkbox"
+              class="toggle-input"
+              :checked="resolvedDebugOptions.showAxes"
+              @change="emitDebugOptionChange('showAxes', $event)"
+            />
+            <span class="toggle-track">
+              <span class="toggle-thumb"></span>
+            </span>
           </span>
-        </span>
-      </label>
-      <label class="toggle-row">
-        <span class="toggle-label-text">Premultiplied Alpha</span>
-        <span class="toggle-switch">
-          <input
-            type="checkbox"
-            class="toggle-input"
-            :checked="props.premultipliedAlpha ?? true"
-            @change="emit('premultiply-alpha-change', ($event.target as HTMLInputElement).checked)"
-          />
-          <span class="toggle-track">
-            <span class="toggle-thumb"></span>
-          </span>
-        </span>
-      </label>
-      <label class="toggle-row">
-        <span class="toggle-label-text">Filtering</span>
-        <span class="toggle-switch">
-          <input
-            type="checkbox"
-            class="toggle-input"
-            :checked="resolvedTextureFiltering !== 'nearest'"
-            @change="emit('texture-filtering-change', ($event.target as HTMLInputElement).checked ? 'linear' : 'nearest')"
-          />
-          <span class="toggle-track">
-            <span class="toggle-thumb"></span>
-          </span>
-        </span>
-      </label>
-    </section>
-
-    <section v-if="runtimeVersion !== null" class="section">
-      <h3 class="section-title">Debug</h3>
-      <div class="debug-option-grid">
-        <label
-          v-for="option in debugOptionsList"
-          :key="option.key"
-          class="debug-option"
-        >
-          <input
-            type="checkbox"
-            class="debug-option-input"
-            :checked="resolvedDebugOptions[option.key]"
-            @change="emitDebugOptionChange(option.key, $event)"
-          />
-          <span class="debug-option-text">{{ option.label }}</span>
         </label>
-      </div>
-    </section>
+        <label class="toggle-row">
+          <span class="toggle-label-text">Premultiplied Alpha</span>
+          <span class="toggle-switch">
+            <input
+              type="checkbox"
+              class="toggle-input"
+              :checked="props.premultipliedAlpha ?? true"
+              @change="emit('premultiply-alpha-change', ($event.target as HTMLInputElement).checked)"
+            />
+            <span class="toggle-track">
+              <span class="toggle-thumb"></span>
+            </span>
+          </span>
+        </label>
+        <label class="toggle-row">
+          <span class="toggle-label-text">Filtering</span>
+          <span class="toggle-switch">
+            <input
+              type="checkbox"
+              class="toggle-input"
+              :checked="resolvedTextureFiltering !== 'nearest'"
+              @change="emit('texture-filtering-change', ($event.target as HTMLInputElement).checked ? 'linear' : 'nearest')"
+            />
+            <span class="toggle-track">
+              <span class="toggle-thumb"></span>
+            </span>
+          </span>
+        </label>
+      </section>
 
-    <div v-if="runtimeVersion !== null" class="version-section">
-      <div class="version-row">
-        <span class="version-label">Detected</span>
-        <span class="version-value">{{ detectedVersionLabel }}</span>
+      <section v-if="runtimeVersion !== null" class="section">
+        <h3 class="section-title">Debug</h3>
+        <div class="debug-option-grid">
+          <label
+            v-for="option in debugOptionsList"
+            :key="option.key"
+            class="debug-option"
+          >
+            <input
+              type="checkbox"
+              class="debug-option-input"
+              :checked="resolvedDebugOptions[option.key]"
+              @change="emitDebugOptionChange(option.key, $event)"
+            />
+            <span class="debug-option-text">{{ option.label }}</span>
+          </label>
+        </div>
+      </section>
+
+      <div v-if="runtimeVersion !== null" class="version-section">
+        <div class="version-row">
+          <span class="version-label">Detected</span>
+          <span class="version-value">{{ detectedVersionLabel }}</span>
+        </div>
+        <div class="version-row">
+          <span class="version-label">Runtime</span>
+          <span class="version-badge" :class="`version-badge--${runtimeVersion}`">v{{ runtimeVersion }}.x</span>
+        </div>
+        <div v-if="fallbackStatusLabel" class="version-row">
+          <span class="version-label">Fallback</span>
+          <span class="version-value">{{ fallbackStatusLabel }}</span>
+        </div>
       </div>
-      <div class="version-row">
-        <span class="version-label">Runtime</span>
-        <span class="version-badge" :class="`version-badge--${runtimeVersion}`">v{{ runtimeVersion }}.x</span>
-      </div>
-      <div v-if="fallbackStatusLabel" class="version-row">
-        <span class="version-label">Fallback</span>
-        <span class="version-value">{{ fallbackStatusLabel }}</span>
-      </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -183,13 +185,12 @@ import { type SpineDetectedVersion, type SpineMajorVersion } from '../lib/spine/
 import type { SpineDebugOptions, SpineTextureFiltering, SpineTrackEntry } from '../lib/spine/adapters'
 
 const props = defineProps<{
+  mode?: 'animate' | 'inspect'
   animations?: string[]
   skins?: string[]
   tracks?: SpineTrackEntry[]
   isPlaying?: boolean
   currentSkin?: string
-  currentTime?: number
-  duration?: number
   drawCall?: number
   eventMarkerCount?: number
   detectedVersion?: SpineDetectedVersion | null
@@ -208,6 +209,8 @@ const emit = defineEmits<{
   'premultiply-alpha-change': [value: boolean]
   'texture-filtering-change': [value: SpineTextureFiltering]
 }>()
+
+const mode = computed(() => props.mode ?? 'animate')
 
 const debugOptionsList: Array<{ key: Exclude<keyof SpineDebugOptions, 'showAxes'>, label: string }> = [
   { key: 'showBones', label: 'Bones' },
@@ -265,12 +268,11 @@ const resolvedTextureFiltering = computed<SpineTextureFiltering>(() => {
   return props.textureFiltering ?? DEFAULT_SPINE_TEXTURE_FILTERING
 })
 
-const mixHintText = computed(() => {
-  if (props.isPlaying) {
-    return 'Mix 會在下次切換動畫時生效，播放中調整不會立即改變目前混合。'
-  }
-
-  return 'Mix 會在同一條 track 切換動畫時套用。'
+const showOverviewSection = computed(() => {
+  return (props.skins?.length || 0) > 0
+    || (props.animations?.length || 0) > 0
+    || (props.drawCall || 0) > 0
+    || (props.eventMarkerCount || 0) > 0
 })
 
 watch(
@@ -529,12 +531,6 @@ const emitDebugOptionChange = (key: keyof SpineDebugOptions, event: Event) => {
 .track-mix-input:disabled::-webkit-inner-spin-button,
 .track-mix-input:disabled::-webkit-outer-spin-button {
   opacity: 0.35;
-}
-
-.track-mix-hint {
-  font-size: 11px;
-  line-height: 1.45;
-  color: var(--text-muted);
 }
 
 .select-wrapper {

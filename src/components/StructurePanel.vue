@@ -2,9 +2,9 @@
   <div class="structure-panel">
     <section v-if="structure && structure.bones.length > 0" class="section hierarchy-section">
       <h3 class="section-title">
-        Hierarchy
+        Skeleton Tree
         <span class="hierarchy-counts">
-          {{ structure.totalBones }} bones · {{ structure.slots.length }} slots
+          {{ structure.totalBones }} bones / {{ structure.slots.length }} slots
         </span>
       </h3>
       <SkeletonTree
@@ -18,7 +18,7 @@
     </section>
 
     <section v-if="!structure || structure.bones.length === 0" class="section empty-state">
-      <h3 class="section-title">Skeleton</h3>
+      <h3 class="section-title">Skeleton Tree</h3>
       <p>Load a skeleton to inspect its hierarchy.</p>
     </section>
   </div>
@@ -41,10 +41,9 @@ const emit = defineEmits<{
 
 <style scoped>
 .structure-panel {
-  padding: 14px 14px 20px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 
 .section {
