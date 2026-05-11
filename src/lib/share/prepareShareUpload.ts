@@ -1,5 +1,5 @@
 import type { SpineSourceFiles } from '../spine/versionDetection'
-import type { PreparedShareUpload, ShareManifest, ShareManifestTexture } from './types'
+import type { PreparedShareUpload, ShareManifest, ShareManifestTexture, ShareUploadOptions } from './types'
 
 const readImageBitmap = async (file: File) => {
   const bitmap = await createImageBitmap(file)
@@ -83,7 +83,8 @@ const drawSoftTextWatermark = (
 
 const processTextureFile = async (
   file: File,
-  label: string
+  label: string,
+  watermarkEnabled: boolean
 ) => {
   const bitmap = await readImageBitmap(file)
   const canvas = document.createElement('canvas')
@@ -97,7 +98,9 @@ const processTextureFile = async (
   }
 
   context.drawImage(bitmap, 0, 0)
-  drawSoftTextWatermark(context, canvas, label)
+  if (watermarkEnabled) {
+    drawSoftTextWatermark(context, canvas, label)
+  }
   bitmap.close()
 
   const blob = await new Promise<Blob>((resolve, reject) => {
@@ -123,13 +126,55 @@ const processTextureFile = async (
   }
 }
 
-export const prepareShareUpload = async (sourceFiles: SpineSourceFiles): Promise<PreparedShareUpload> => {
+const trimSkeletonAnimations = async (
+  skeletonFile: File,
+  clipAnimationName: string | null
+) => {
+  if (!clipAnimationName) return skeletonFile
+
+  const skeletonText = await skeletonFile.text()
+  let parsed: Record<string, unknown>
+
+  try {
+    parsed = JSON.parse(skeletonText) as Record<string, unknown>
+  } catch {
+    throw new Error('Failed to parse skeleton JSON for share trimming')
+  }
+
+  const animationMap = parsed.animations
+  if (!animationMap || typeof animationMap !== 'object' || Array.isArray(animationMap)) {
+    throw new Error('Skeleton JSON does not contain a valid animations object')
+  }
+
+  if (!(clipAnimationName in animationMap)) {
+    throw new Error(`Animation "${clipAnimationName}" was not found in skeleton JSON`)
+  }
+
+  const trimmedSkeleton = {
+    ...parsed,
+    animations: {
+      [clipAnimationName]: (animationMap as Record<string, unknown>)[clipAnimationName]
+    }
+  }
+
+  return new File(
+    [JSON.stringify(trimmedSkeleton, null, 2)],
+    skeletonFile.name,
+    { type: skeletonFile.type || 'application/json' }
+  )
+}
+
+export const prepareShareUpload = async (
+  sourceFiles: SpineSourceFiles,
+  options: ShareUploadOptions
+): Promise<PreparedShareUpload> => {
   const now = new Date()
   const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000)
   const watermarkLabel = buildWatermarkLabel()
+  const sharedSkeletonFile = await trimSkeletonAnimations(sourceFiles.skeletonFile, options.clipAnimationName)
 
   const processedTextures = await Promise.all(
-    sourceFiles.textureFiles.map(file => processTextureFile(file, watermarkLabel))
+    sourceFiles.textureFiles.map(file => processTextureFile(file, watermarkLabel, options.watermarkEnabled))
   )
 
   const manifest: ShareManifest = {
@@ -138,8 +183,8 @@ export const prepareShareUpload = async (sourceFiles: SpineSourceFiles): Promise
     expiresAt: expiresAt.toISOString(),
     files: {
       skeleton: {
-        name: sourceFiles.skeletonFile.name,
-        mimeType: sourceFiles.skeletonFile.type || 'application/json'
+        name: sharedSkeletonFile.name,
+        mimeType: sharedSkeletonFile.type || 'application/json'
       },
       atlas: {
         name: sourceFiles.atlasFile.name,
@@ -148,13 +193,24 @@ export const prepareShareUpload = async (sourceFiles: SpineSourceFiles): Promise
       textures: processedTextures.map(item => item.textureManifest)
     },
     watermark: {
-      mode: 'soft-text',
-      label: watermarkLabel
+      enabled: options.watermarkEnabled,
+      mode: options.watermarkEnabled ? 'soft-text' : 'none',
+      label: options.watermarkEnabled ? watermarkLabel : null
+    },
+    defaults: {
+      animationName: options.defaultAnimationName,
+      skinName: options.defaultSkinName
+    },
+    content: {
+      clipAnimationName: options.clipAnimationName
     }
   }
 
   return {
-    sourceFiles,
+    sourceFiles: {
+      ...sourceFiles,
+      skeletonFile: sharedSkeletonFile
+    },
     manifest,
     processedTextures: processedTextures.map(item => item.processedFile)
   }

@@ -8,6 +8,13 @@ export interface ShareManifestTexture {
   height: number
 }
 
+export interface ShareUploadOptions {
+  watermarkEnabled: boolean
+  clipAnimationName: string | null
+  defaultAnimationName: string | null
+  defaultSkinName: string | null
+}
+
 export interface ShareManifest {
   shareId: string
   createdAt: string
@@ -24,8 +31,16 @@ export interface ShareManifest {
     textures: ShareManifestTexture[]
   }
   watermark: {
-    mode: 'tiled-diagonal' | 'tiled-horizontal' | 'soft-diagonal' | 'soft-text'
-    label: string
+    enabled: boolean
+    mode: 'none' | 'tiled-diagonal' | 'tiled-horizontal' | 'soft-diagonal' | 'soft-text'
+    label: string | null
+  }
+  defaults?: {
+    animationName: string | null
+    skinName: string | null
+  }
+  content?: {
+    clipAnimationName: string | null
   }
 }
 

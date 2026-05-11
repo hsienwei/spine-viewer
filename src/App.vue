@@ -210,15 +210,48 @@
           </button>
           <div v-show="isSharePanelOpen" class="sidebar-panel-body">
             <div class="share-panel-body">
+              <div class="share-config-card">
+                <div class="share-config-title">Share Setup</div>
+                <p class="share-config-copy">
+                  Create a 24-hour preview link. The shared viewer will open with your current animation and skin.
+                </p>
+                <label class="share-option-row">
+                  <span class="share-option-copy">
+                    <span class="share-option-title">Watermark textures</span>
+                    <span class="share-option-hint">Export texture pages as WebP and apply a static watermark.</span>
+                  </span>
+                  <input v-model="shareWatermarkEnabled" class="share-option-checkbox" type="checkbox">
+                </label>
+                <label class="share-option-row" :class="{ disabled: !sharePrimaryAnimationName }">
+                  <span class="share-option-copy">
+                    <span class="share-option-title">Clip to current animation</span>
+                    <span class="share-option-hint">
+                      {{ sharePrimaryAnimationName ? `Only keep "${sharePrimaryAnimationName}" in the shared skeleton JSON.` : 'Choose an animation first.' }}
+                    </span>
+                  </span>
+                  <input
+                    v-model="shareClipCurrentAnimation"
+                    class="share-option-checkbox"
+                    type="checkbox"
+                    :disabled="!sharePrimaryAnimationName"
+                  >
+                </label>
+                <div class="share-defaults-summary">
+                  <span class="share-defaults-label">Defaults</span>
+                  <span class="share-defaults-value">{{ shareDefaultsSummary }}</span>
+                </div>
+              </div>
               <button
-                v-if="canShare"
                 type="button"
                 class="share-primary-btn"
-                :disabled="isSharing"
+                :disabled="!canShare || isSharing"
                 @click="handleCreateShare"
               >
                 {{ isSharing ? 'Sharing...' : 'Create Share Link' }}
               </button>
+              <p v-if="!canShare" class="sidebar-status">
+                Load a Spine asset and keep at least one animation available before sharing.
+              </p>
               <p v-if="shareStatusText" class="sidebar-status" :class="{ error: !!shareError }">
                 {{ shareStatusText }}
               </p>
@@ -252,6 +285,9 @@
                       </div>
                       <span class="share-history-subtitle">
                         Expires {{ formatShareDate(item.expiresAt) }}
+                      </span>
+                      <span v-if="getShareHistoryOptionSummary(item)" class="share-history-subtitle">
+                        {{ getShareHistoryOptionSummary(item) }}
                       </span>
                     </div>
                     <div class="share-history-actions">
@@ -444,6 +480,8 @@ const shareExpiresAt = ref('')
 const shareError = ref('')
 const shareToken = ref('')
 const shareManifest = ref<ShareManifest | null>(null)
+const shareWatermarkEnabled = ref(true)
+const shareClipCurrentAnimation = ref(false)
 
 interface ShareHistoryEntry {
   token: string
@@ -454,6 +492,10 @@ interface ShareHistoryEntry {
   skeletonName: string
   atlasName: string
   watermarkLabel: string
+  watermarkEnabled?: boolean
+  clipAnimationName?: string | null
+  defaultAnimationName?: string | null
+  defaultSkinName?: string | null
   revoking?: boolean
 }
 
@@ -609,6 +651,20 @@ const deleteShareHistory = (token: string) => {
   scheduleShareHistoryPrune()
 }
 
+const getShareHistoryOptionSummary = (item: ShareHistoryEntry) => {
+  const parts: string[] = []
+  parts.push(item.watermarkEnabled === false ? 'No watermark' : 'Watermark on')
+  if (item.clipAnimationName) {
+    parts.push(`Only "${item.clipAnimationName}"`)
+  } else if (item.defaultAnimationName) {
+    parts.push(`Default "${item.defaultAnimationName}"`)
+  }
+  if (item.defaultSkinName) {
+    parts.push(`Skin ${item.defaultSkinName}`)
+  }
+  return parts.join(' • ')
+}
+
 const formatShareDate = (value: string) => { 
   return new Date(value).toLocaleString() 
 } 
@@ -623,6 +679,22 @@ const copyShareLink = async (url: string) => {
 
 const openShareLink = (url: string) => {
   window.open(url, '_blank', 'noreferrer')
+}
+const buildDefaultShareTracks = (name: string | null): SpineTrackEntry[] => {
+  if (!name) return []
+  return [{
+    trackIndex: 0,
+    animationName: name,
+    loop: true,
+    mixDuration: 0
+  }]
+}
+const applySharePreviewDefaults = (manifest: ShareManifest) => {
+  const defaultAnimationName = manifest.defaults?.animationName || manifest.content?.clipAnimationName || ''
+  const defaultSkinName = manifest.defaults?.skinName || ''
+  animationName.value = defaultAnimationName
+  animationTracks.value = buildDefaultShareTracks(defaultAnimationName)
+  currentSkin.value = defaultSkinName
 }
 const observedTrackState = computed(() => { 
   return trackPlaybackStates.value.find(track => track.trackIndex === overlayTrackIndex.value) || null
@@ -645,6 +717,12 @@ const visibleRuntimeNotifications = computed(() => {
 })
 const activeShareAnimation = computed(() => {
   return animationTracks.value.find(track => track.trackIndex === 0)?.animationName || animationName.value || animations.value[0] || ''
+})
+const sharePrimaryAnimationName = computed(() => activeShareAnimation.value || '')
+const shareDefaultsSummary = computed(() => {
+  const animationLabel = sharePrimaryAnimationName.value || 'First available animation'
+  const skinLabel = currentSkin.value || skins.value[0] || 'Setup pose skin'
+  return `Animation: ${animationLabel} • Skin: ${skinLabel}`
 })
 const overlayTrackOptions = computed(() => {
   const indices = new Set<number>()
@@ -748,6 +826,7 @@ const loadSharedSession = async (token: string) => {
     const manifest = await fetchShareManifest(token)
     const sharedFiles = await fetchSharedSourceFiles(token, manifest)
     shareManifest.value = manifest
+    applySharePreviewDefaults(manifest)
     sourceFiles.value = [
       sharedFiles.skeletonFile,
       sharedFiles.atlasFile,
@@ -936,15 +1015,20 @@ const handleLoaded = (data: {
 }) => {
   animations.value = data.animations
   skins.value = data.skins
-  currentSkin.value = data.currentSkin
+  currentSkin.value = currentSkin.value && data.skins.includes(currentSkin.value)
+    ? currentSkin.value
+    : data.currentSkin
   animationSummaries.value = data.animationSummaries
   structure.value = data.structure
   selection.value = { boneName: null, slotName: null }
   clearRuntimeNotifications()
   if (data.animations.length > 0) {
+    const preferredAnimationName = animationTracks.value.find(track => track.trackIndex === 0)?.animationName || animationName.value
     const initialTrack = {
       trackIndex: 0,
-      animationName: data.animations[0],
+      animationName: preferredAnimationName && data.animations.includes(preferredAnimationName)
+        ? preferredAnimationName
+        : data.animations[0],
       loop: true,
       mixDuration: 0
     }
@@ -1115,7 +1199,12 @@ const handleCreateShare = async () => {
   isSharing.value = true
 
   try { 
-    const prepared = await prepareShareUpload(classifySpineFiles(sourceFiles.value)) 
+    const prepared = await prepareShareUpload(classifySpineFiles(sourceFiles.value), {
+      watermarkEnabled: shareWatermarkEnabled.value,
+      clipAnimationName: shareClipCurrentAnimation.value ? sharePrimaryAnimationName.value : null,
+      defaultAnimationName: sharePrimaryAnimationName.value || null,
+      defaultSkinName: currentSkin.value || skins.value[0] || null
+    }) 
     const result = await createShareLink(prepared) 
     upsertShareHistory({
       token: result.token,
@@ -1125,7 +1214,11 @@ const handleCreateShare = async () => {
       revokedAt: null,
       skeletonName: prepared.manifest.files.skeleton.name,
       atlasName: prepared.manifest.files.atlas.name,
-      watermarkLabel: prepared.manifest.watermark.label
+      watermarkLabel: prepared.manifest.watermark.label || '',
+      watermarkEnabled: prepared.manifest.watermark.enabled,
+      clipAnimationName: prepared.manifest.content?.clipAnimationName || null,
+      defaultAnimationName: prepared.manifest.defaults?.animationName || null,
+      defaultSkinName: prepared.manifest.defaults?.skinName || null
     })
     shareUrl.value = result.shareUrl 
     shareExpiresAt.value = result.expiresAt 
@@ -1514,6 +1607,86 @@ html, body, #app {
   flex-direction: column;
   gap: 10px;
   padding: 14px 14px 16px;
+}
+
+.share-config-card {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+
+.share-config-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.share-config-copy {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.share-option-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.share-option-row.disabled {
+  opacity: 0.55;
+}
+
+.share-option-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.share-option-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.share-option-hint {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.share-option-checkbox {
+  margin: 2px 0 0;
+  inline-size: 16px;
+  block-size: 16px;
+  accent-color: var(--accent);
+}
+
+.share-defaults-summary {
+  display: grid;
+  gap: 4px;
+  padding-top: 2px;
+  border-top: 1px solid var(--border);
+}
+
+.share-defaults-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.share-defaults-value {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
 }
 
 .share-primary-btn {
