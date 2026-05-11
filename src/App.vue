@@ -210,6 +210,23 @@
           </button>
           <div v-show="isSharePanelOpen" class="sidebar-panel-body">
             <div class="share-panel-body">
+              <div class="share-export-card">
+                <div class="share-export-copy">
+                  <span class="share-export-title">WebM Clip</span>
+                  <span class="share-export-hint">{{ shareWebmSummary }}</span>
+                </div>
+                <button
+                  type="button"
+                  class="share-secondary-btn"
+                  :disabled="!canShareWebm || isSharingWebm"
+                  @click="handleShareWebm"
+                >
+                  {{ isSharingWebm ? 'Recording...' : 'Export WebM' }}
+                </button>
+                <p v-if="shareWebmStatus" class="share-export-status">
+                  {{ shareWebmStatus }}
+                </p>
+              </div>
               <div class="share-config-card">
                 <div class="share-config-title">Share Setup</div>
                 <p class="share-config-copy">
@@ -425,7 +442,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import packageJson from '../package.json'
 import ControlPanel from './components/ControlPanel.vue'
 import LoadFilesPanel from './components/LoadFilesPanel.vue'
@@ -439,6 +456,7 @@ import { classifySpineFiles, type SpineDetectedVersion, type SpineMajorVersion }
 import { createShareLink, extractShareTokenFromPath, fetchShareManifest, fetchSharedSourceFiles, normalizeShareErrorMessage, revokeShareLink } from './lib/share/api' 
 import { prepareShareUpload } from './lib/share/prepareShareUpload'
 import type { ShareManifest } from './lib/share/types'
+import { downloadWebm, recordCanvasToWebm } from './lib/share/webm'
 
 const appVersion = packageJson.version
 
@@ -482,6 +500,8 @@ const shareToken = ref('')
 const shareManifest = ref<ShareManifest | null>(null)
 const shareWatermarkEnabled = ref(true)
 const shareClipCurrentAnimation = ref(false)
+const isSharingWebm = ref(false)
+const shareWebmStatus = ref('')
 
 interface ShareHistoryEntry {
   token: string
@@ -525,6 +545,12 @@ const hasInspectPanel = computed(() => {
     || runtimeVersion.value !== null
 })
 const canShare = computed(() => sourceFiles.value.length > 0 && animations.value.length > 0)  
+const canShareWebm = computed(() => {
+  return sourceFiles.value.length > 0
+    && !!observedAnimationName.value
+    && duration.value > 0
+    && !isSharePreview.value
+})
 const shareStatusText = computed(() => {  
   if (shareError.value) return shareError.value
   if (shareUrl.value && shareExpiresAt.value) {
@@ -680,6 +706,14 @@ const copyShareLink = async (url: string) => {
 const openShareLink = (url: string) => {
   window.open(url, '_blank', 'noreferrer')
 }
+
+const buildWebmFileName = () => {
+  const skeletonName = sourceFiles.value.find(file => /\.(json|skel)$/i.test(file.name))?.name || 'spine-viewer'
+  const skeletonBase = skeletonName.replace(/\.[^.]+$/, '')
+  const animationBase = (observedAnimationName.value || 'clip').replace(/[^\w.-]+/g, '-')
+  return `${skeletonBase}-${animationBase}.webm`
+}
+
 const buildDefaultShareTracks = (name: string | null): SpineTrackEntry[] => {
   if (!name) return []
   return [{
@@ -723,6 +757,15 @@ const shareDefaultsSummary = computed(() => {
   const animationLabel = sharePrimaryAnimationName.value || 'First available animation'
   const skinLabel = currentSkin.value || skins.value[0] || 'Setup pose skin'
   return `Animation: ${animationLabel} • Skin: ${skinLabel}`
+})
+const shareWebmSummary = computed(() => {
+  if (!observedAnimationName.value || duration.value <= 0) {
+    return 'Choose a playable animation to export a WebM clip.'
+  }
+
+  const seconds = duration.value / Math.max(playbackRate.value || 1, 0.01)
+  const roundedSeconds = Math.round(seconds * 10) / 10
+  return `Clip: ${observedAnimationName.value} ??Length: ${roundedSeconds}s ??Track: ${overlayTrackIndex.value}`
 })
 const overlayTrackOptions = computed(() => {
   const indices = new Set<number>()
@@ -812,6 +855,7 @@ const resetViewerState = () => {
   runtimeVersion.value = null
   initialRuntimeVersion.value = null
   fallbackUsed.value = false
+  shareWebmStatus.value = ''
   clearRuntimeNotifications()
 }
 
@@ -1229,6 +1273,47 @@ const handleCreateShare = async () => {
     isSharing.value = false 
   } 
 } 
+
+const handleShareWebm = async () => {
+  if (!canShareWebm.value || isSharingWebm.value) return
+
+  const canvas = spineCanvasRef.value?.getCanvasElement?.()
+  if (!canvas) {
+    shareWebmStatus.value = 'WebM export is unavailable because the canvas is not ready.'
+    return
+  }
+
+  const clipDurationMs = Math.ceil((duration.value / Math.max(playbackRate.value || 1, 0.01)) * 1000)
+  if (!Number.isFinite(clipDurationMs) || clipDurationMs <= 0) {
+    shareWebmStatus.value = 'WebM export requires a valid animation duration.'
+    return
+  }
+
+  const previousTime = currentTime.value
+  const previousPlaying = isPlaying.value
+  isSharingWebm.value = true
+  shareWebmStatus.value = 'Recording WebM...'
+
+  try {
+    spineCanvasRef.value?.seekTo(0, overlayTrackIndex.value)
+    isPlaying.value = true
+    await nextTick()
+
+    const file = await recordCanvasToWebm({
+      canvas,
+      durationMs: clipDurationMs + 180,
+      fileName: buildWebmFileName()
+    })
+    await downloadWebm(file)
+    shareWebmStatus.value = `WebM downloaded: ${file.name}`
+  } catch (error) {
+    shareWebmStatus.value = error instanceof Error ? error.message : 'Failed to export WebM'
+  } finally {
+    spineCanvasRef.value?.seekTo(previousTime, overlayTrackIndex.value)
+    isPlaying.value = previousPlaying
+    isSharingWebm.value = false
+  }
+}
 
 const handleRevokeShare = async (token: string) => { 
   const currentItem = shareHistory.value.find(item => item.token === token) 
@@ -1710,6 +1795,64 @@ html, body, #app {
 }
 
 .share-primary-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.share-export-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-surface) 74%, transparent);
+}
+
+.share-export-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.share-export-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.share-export-hint {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.share-export-status {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.share-secondary-btn {
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition), background var(--transition), opacity var(--transition);
+}
+
+.share-secondary-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.share-secondary-btn:disabled {
   opacity: 0.55;
   cursor: wait;
 }

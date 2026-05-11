@@ -645,6 +645,7 @@ const handleTouchEnd = (event: TouchEvent) => {
 }
 
 defineExpose({
+  getCanvasElement: () => canvasRef.value,
   seekTo,
   resetView
 })
