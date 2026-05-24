@@ -1,29 +1,53 @@
 <template>
   <div class="spine-viewer">
-    <button
-      v-if="!isSidebarOpen"
-      type="button"
-      class="mobile-sidebar-toggle"
-      :aria-expanded="false"
-      :aria-label="isSharePreview ? 'Open shared preview menu' : 'Open menu'"
-      @click="toggleSidebar"
-    >
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <path d="M3 4h10M3 8h10M3 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>
-    </button>
-
-    <div
-      v-if="isMobileViewport && isSidebarOpen"
-      class="mobile-sidebar-scrim"
-      @click="closeSidebar"
-    />
+    <div v-if="isMobileViewport" class="mobile-tab-bar">
+      <div class="mobile-tab-group" role="tablist" aria-label="Mobile viewer sections">
+        <button
+          type="button"
+          class="mobile-tab-btn"
+          :class="{ 'mobile-tab-btn--active': activeMobileTab === 'viewer' }"
+          :aria-selected="activeMobileTab === 'viewer'"
+          @click="setActiveMobileTab('viewer')"
+        >
+          <svg class="mobile-tab-icon" width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <path d="M2.5 4.5h13v9h-13z" stroke="currentColor" stroke-width="1.4" rx="1.6"/>
+            <path d="M6 13.5h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+          <span>Viewer</span>
+        </button>
+        <button
+          type="button"
+          class="mobile-tab-btn"
+          :class="{ 'mobile-tab-btn--active': activeMobileTab === 'controls' }"
+          :aria-selected="activeMobileTab === 'controls'"
+          @click="setActiveMobileTab('controls')"
+        >
+          <svg class="mobile-tab-icon" width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <path d="M4 5.5h10M4 9h10M4 12.5h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            <circle cx="6" cy="5.5" r="1.1" fill="currentColor"/>
+            <circle cx="12" cy="9" r="1.1" fill="currentColor"/>
+            <circle cx="8" cy="12.5" r="1.1" fill="currentColor"/>
+          </svg>
+          <span>Controls</span>
+        </button>
+      </div>
+      <button class="theme-toggle mobile-theme-toggle" @click="toggleTheme" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
+        <svg v-if="isDark" width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M10.01 3.99l1.06-1.06M2.93 11.07l1.06-1.06" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <svg v-else width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M11.5 8.5A5 5 0 1 1 5.5 2.5a3.5 3.5 0 0 0 6 6z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
 
     <aside
       class="sidebar"
       :class="{
         'sidebar--share-preview': isSharePreview,
-        'sidebar--mobile-open': isSidebarOpen
+        'sidebar--mobile-tabbed': isMobileViewport,
+        'sidebar--mobile-visible': isMobileViewport && activeMobileTab === 'controls'
       }"
     >
       <div class="sidebar-brand">
@@ -34,16 +58,7 @@
           </div>
           <span class="brand-version">v{{ appVersion }}</span>
         </div>
-        <button
-          v-if="isMobileViewport && isSidebarOpen"
-          type="button"
-          class="sidebar-close-btn"
-          aria-label="Close sidebar"
-          @click="closeSidebar"
-        >
-          Close
-        </button>
-        <button class="theme-toggle" @click="toggleTheme" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
+        <button v-if="!isMobileViewport" class="theme-toggle" @click="toggleTheme" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <svg v-if="isDark" width="14" height="14" viewBox="0 0 14 14" fill="none">
             <circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.4"/>
             <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M10.01 3.99l1.06-1.06M2.93 11.07l1.06-1.06" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
@@ -367,7 +382,13 @@
       </div>
     </aside> 
 
-    <main class="main-content">
+    <main
+      class="main-content"
+      :class="{
+        'main-content--mobile-tabbed': isMobileViewport,
+        'main-content--mobile-visible': !isMobileViewport || activeMobileTab === 'viewer'
+      }"
+    >
       <SpineCanvas
         ref="spineCanvasRef"
         :files="sourceFiles"
@@ -477,7 +498,7 @@ const isInspectPanelOpen = ref(true)
 const isSharePanelOpen = ref(false)
 const isInfoOpen = ref(false)
 const isMobileViewport = ref(false)
-const isSidebarOpen = ref(true)
+const activeMobileTab = ref<'viewer' | 'controls'>('viewer')
 
 const animations = ref<string[]>([])
 const skins = ref<string[]>([])
@@ -799,32 +820,24 @@ const updateViewportState = () => {
   const nextIsMobileViewport = window.innerWidth <= 640
   if (nextIsMobileViewport !== isMobileViewport.value) {
     isMobileViewport.value = nextIsMobileViewport
-    isSidebarOpen.value = !nextIsMobileViewport
-    return
-  }
-
-  if (!nextIsMobileViewport) {
-    isSidebarOpen.value = true
+    if (!nextIsMobileViewport) {
+      activeMobileTab.value = 'viewer'
+    }
   }
 }
 
 const handleWindowKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
     isInfoOpen.value = false
-    if (isMobileViewport.value) {
-      isSidebarOpen.value = false
+    if (isMobileViewport.value && activeMobileTab.value === 'controls') {
+      activeMobileTab.value = 'viewer'
     }
   }
 }
 
-const closeSidebar = () => {
+const setActiveMobileTab = (tab: 'viewer' | 'controls') => {
   if (!isMobileViewport.value) return
-  isSidebarOpen.value = false
-}
-
-const toggleSidebar = () => {
-  if (!isMobileViewport.value) return
-  isSidebarOpen.value = !isSidebarOpen.value
+  activeMobileTab.value = tab
 }
 
 const applyTheme = (dark: boolean) => {
@@ -877,7 +890,7 @@ const loadSharedSession = async (token: string) => {
       ...sharedFiles.textureFiles
     ]
     isLoadFilesPanelOpen.value = false
-    closeSidebar()
+    activeMobileTab.value = 'viewer'
   } catch (error) { 
     shareManifest.value = null 
     shareError.value = error instanceof Error ? normalizeShareErrorMessage(error.message) : 'Failed to load shared assets' 
@@ -891,6 +904,7 @@ const handleExitSharePreview = () => {
   shareExpiresAt.value = ''
   shareError.value = ''
   sourceFiles.value = []
+  activeMobileTab.value = 'viewer'
   resetViewerState()
   window.history.replaceState({}, '', '/')
 }
@@ -930,7 +944,7 @@ const handleFileSelected = (payload: { files: File[] }) => {
   shareExpiresAt.value = ''
   shareError.value = ''
   resetViewerState()
-  closeSidebar()
+  activeMobileTab.value = 'viewer'
 }
 
 const clearRuntimeNotifications = () => {
@@ -1381,6 +1395,8 @@ const handleRevokeShare = async (token: string) => {
   --radius-md: 8px;
   --radius-lg: 14px;
   --transition: 0.15s ease;
+  --mobile-bottom-nav-height: 76px;
+  --mobile-bottom-nav-gap: 12px;
 }
 
 :root[data-theme="light"] {
@@ -1436,12 +1452,50 @@ html, body, #app {
   color: var(--text-primary);
 }
 
-.mobile-sidebar-toggle {
+.mobile-tab-bar {
   display: none;
 }
 
-.mobile-sidebar-scrim {
-  display: none;
+.mobile-tab-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.mobile-tab-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--transition), border-color var(--transition), background var(--transition);
+}
+
+.mobile-tab-btn--active {
+  border-color: var(--border-glow);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.mobile-tab-icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.mobile-theme-toggle {
+  flex-shrink: 0;
 }
 
 .sidebar {
@@ -2028,10 +2082,6 @@ html, body, #app {
   background: var(--accent-dim);
 }
 
-.sidebar-close-btn {
-  display: none;
-}
-
 .mini-action-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -2143,82 +2193,60 @@ html, body, #app {
 }
 
 @media (max-width: 640px) {
-  .mobile-sidebar-toggle {
+  .spine-viewer {
+    flex-direction: column;
+  }
+
+  .mobile-tab-bar {
+    display: flex;
     position: absolute;
-    top: 12px;
     left: 12px;
-    z-index: 22;
-    display: inline-flex;
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    z-index: 30;
     align-items: center;
-    justify-content: center;
-    width: 38px;
-    height: 38px;
-    padding: 0;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px;
     border: 1px solid var(--border);
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--bg-panel) 78%, transparent);
-    backdrop-filter: blur(10px);
-    color: var(--text-secondary);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-    cursor: pointer;
-    transition: color var(--transition), border-color var(--transition), background var(--transition);
-  }
-
-  .mobile-sidebar-toggle:hover {
-    color: var(--accent);
-    border-color: var(--border-glow);
+    border-radius: 20px;
     background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(16px);
+    flex-shrink: 0;
   }
 
-  .mobile-sidebar-scrim {
-    position: absolute;
-    inset: 0;
-    z-index: 20;
-    display: block;
-    background: rgba(7, 6, 5, 0.42);
-    backdrop-filter: blur(1px);
+  .mobile-tab-group {
+    flex: 1;
+    gap: 4px;
+  }
+
+  .mobile-tab-btn {
+    flex: 1;
+    min-height: 52px;
+    padding: 6px 10px 5px;
+    border-radius: 16px;
+    font-size: 9px;
+    letter-spacing: 0.1em;
   }
 
   .sidebar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: min(86vw, 320px);
-    max-width: 320px;
-    height: 100%;
-    border-right: 1px solid var(--border);
-    border-bottom: 0;
-    z-index: 21;
-    transform: translateX(-100%);
-    transition: transform var(--transition);
-    box-shadow: 18px 0 40px rgba(0, 0, 0, 0.28);
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    display: none;
+    flex: 1;
+    min-height: 0;
   }
 
-  .sidebar--mobile-open {
-    transform: translateX(0);
+  .sidebar--mobile-visible {
+    display: flex;
   }
 
   .sidebar-brand {
     padding: 14px 14px 12px;
-  }
-
-  .sidebar-close-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 28px;
-    padding: 0 10px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: transparent;
-    color: var(--text-muted);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    cursor: pointer;
-    flex-shrink: 0;
   }
 
   .brand-spine {
@@ -2245,6 +2273,21 @@ html, body, #app {
 
   .share-error-banner {
     margin: 0;
+  }
+
+  .main-content {
+    display: none;
+    flex: 1;
+    min-height: 0;
+    padding-bottom: calc(var(--mobile-bottom-nav-height) + var(--mobile-bottom-nav-gap) + env(safe-area-inset-bottom));
+  }
+
+  .main-content--mobile-visible {
+    display: flex;
+  }
+
+  .sidebar--mobile-tabbed {
+    padding-bottom: calc(var(--mobile-bottom-nav-height) + var(--mobile-bottom-nav-gap) + env(safe-area-inset-bottom));
   }
 
   .sidebar--share-preview .sidebar-brand {

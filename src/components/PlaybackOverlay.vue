@@ -721,7 +721,7 @@ onUnmounted(() => {
   .playback-overlay {
     left: 10px;
     right: 10px;
-    bottom: 10px;
+    bottom: calc(var(--mobile-bottom-nav-height, 76px) + var(--mobile-bottom-nav-gap, 12px) + env(safe-area-inset-bottom));
     width: auto;
     gap: 12px;
     padding: 12px 12px 14px;
@@ -745,12 +745,12 @@ onUnmounted(() => {
   }
 
   .controls-row {
-    flex-wrap: wrap;
     gap: 8px;
   }
 
   .speed-group {
-    flex-basis: 100%;
+    flex: 1;
+    min-width: 0;
   }
 
   .speed-label {
