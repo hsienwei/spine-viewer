@@ -41,14 +41,19 @@
             </svg>
           </div>
           <div class="track-settings-row">
-            <label class="track-loop-toggle">
-              <input
-                type="checkbox"
-                class="debug-option-input"
-                :checked="track.loop"
-                @change="updateTrackLoop(track.trackIndex, ($event.target as HTMLInputElement).checked)"
-              />
+            <label class="track-loop-row">
               <span class="track-loop-label">Loop</span>
+              <span class="toggle-switch">
+                <input
+                  type="checkbox"
+                  class="toggle-input"
+                  :checked="track.loop"
+                  @change="updateTrackLoop(track.trackIndex, ($event.target as HTMLInputElement).checked)"
+                />
+                <span class="toggle-track">
+                  <span class="toggle-thumb"></span>
+                </span>
+              </span>
             </label>
             <label class="track-mix-field">
               <span class="track-mix-label">Mix</span>
@@ -495,12 +500,13 @@ const emitDebugOptionChange = (key: keyof SpineDebugOptions, event: Event) => {
   color: var(--accent);
 }
 
-.track-loop-toggle {
+.track-loop-row {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-size: 12px;
   color: var(--text-secondary);
+  flex-shrink: 0;
 }
 
 .track-loop-label {
@@ -512,13 +518,14 @@ const emitDebugOptionChange = (key: keyof SpineDebugOptions, event: Event) => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .track-mix-field {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .track-mix-label,

@@ -252,7 +252,12 @@
                     <span class="share-option-title">Watermark textures</span>
                     <span class="share-option-hint">Export texture pages as WebP and apply a static watermark.</span>
                   </span>
-                  <input v-model="shareWatermarkEnabled" class="share-option-checkbox" type="checkbox">
+                  <span class="share-option-switch">
+                    <input v-model="shareWatermarkEnabled" class="share-option-checkbox" type="checkbox">
+                    <span class="share-option-track">
+                      <span class="share-option-thumb"></span>
+                    </span>
+                  </span>
                 </label>
                 <label class="share-option-row" :class="{ disabled: !sharePrimaryAnimationName }">
                   <span class="share-option-copy">
@@ -261,12 +266,17 @@
                       {{ sharePrimaryAnimationName ? `Only keep "${sharePrimaryAnimationName}" in the shared skeleton JSON.` : 'Choose an animation first.' }}
                     </span>
                   </span>
-                  <input
-                    v-model="shareClipCurrentAnimation"
-                    class="share-option-checkbox"
-                    type="checkbox"
-                    :disabled="!sharePrimaryAnimationName"
-                  >
+                  <span class="share-option-switch">
+                    <input
+                      v-model="shareClipCurrentAnimation"
+                      class="share-option-checkbox"
+                      type="checkbox"
+                      :disabled="!sharePrimaryAnimationName"
+                    >
+                    <span class="share-option-track">
+                      <span class="share-option-thumb"></span>
+                    </span>
+                  </span>
                 </label>
                 <div class="share-defaults-summary">
                   <span class="share-defaults-label">Defaults</span>
@@ -1800,11 +1810,51 @@ html, body, #app {
   color: var(--text-muted);
 }
 
+.share-option-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 .share-option-checkbox {
-  margin: 2px 0 0;
-  inline-size: 16px;
-  block-size: 16px;
-  accent-color: var(--accent);
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.share-option-track {
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  transition: background var(--transition), border-color var(--transition), opacity var(--transition);
+}
+
+.share-option-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform var(--transition), background var(--transition);
+}
+
+.share-option-checkbox:checked + .share-option-track {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+
+.share-option-checkbox:checked + .share-option-track .share-option-thumb {
+  transform: translateX(14px);
+  background: var(--accent);
+}
+
+.share-option-checkbox:disabled + .share-option-track {
+  opacity: 0.5;
 }
 
 .share-defaults-summary {
