@@ -147,15 +147,20 @@
           <label
             v-for="option in debugOptionsList"
             :key="option.key"
-            class="debug-option"
+            class="toggle-row debug-toggle-row"
           >
-            <input
-              type="checkbox"
-              class="debug-option-input"
-              :checked="resolvedDebugOptions[option.key]"
-              @change="emitDebugOptionChange(option.key, $event)"
-            />
-            <span class="debug-option-text">{{ option.label }}</span>
+            <span class="toggle-label-text">{{ option.label }}</span>
+            <span class="toggle-switch">
+              <input
+                type="checkbox"
+                class="toggle-input"
+                :checked="resolvedDebugOptions[option.key]"
+                @change="emitDebugOptionChange(option.key, $event)"
+              />
+              <span class="toggle-track">
+                <span class="toggle-thumb"></span>
+              </span>
+            </span>
           </label>
         </div>
       </section>
@@ -657,25 +662,13 @@ const emitDebugOptionChange = (key: keyof SpineDebugOptions, event: Event) => {
 }
 
 .debug-option-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 10px;
-}
-
-.debug-option {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--text-secondary);
+  flex-direction: column;
+  gap: 10px;
 }
 
-.debug-option-input {
-  accent-color: var(--accent);
-}
-
-.debug-option-text {
-  line-height: 1.2;
+.debug-toggle-row {
+  min-height: 20px;
 }
 
 .version-section {
