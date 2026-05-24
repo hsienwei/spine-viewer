@@ -445,6 +445,24 @@ const emitDebugOptionChange = (key: keyof SpineDebugOptions, event: Event) => {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.track-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.track-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+.track-list::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .track-card {

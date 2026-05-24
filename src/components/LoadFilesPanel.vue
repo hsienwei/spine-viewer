@@ -1,14 +1,23 @@
 <template>
   <div class="load-files-panel">
     <div class="load-buttons">
-      <button class="btn btn-outline" @click="triggerFileInput">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-          <path d="M6.5 1v8M3 6l3.5 3.5L10 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M1 10v1.5a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5V10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        </svg>
-        Local
-      </button>
-      <button class="btn btn-outline" @click="showDriveBrowser = true">
+      <div class="load-local-group">
+        <button class="btn btn-outline" @click="triggerFileInput">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <path d="M6.5 1v8M3 6l3.5 3.5L10 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M1 10v1.5a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5V10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+          Files
+        </button>
+        <button class="btn btn-outline" @click="triggerFolderInput">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <path d="M1.5 4.25h3.1l1.05 1.15H11.5v4.85a.75.75 0 0 1-.75.75h-8.5a.75.75 0 0 1-.75-.75z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M1.5 5.4v-2.15a.75.75 0 0 1 .75-.75h2.05l1.05 1.15h5.4a.75.75 0 0 1 .75.75V5.4" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+          </svg>
+          Folder
+        </button>
+      </div>
+      <button class="btn btn-outline btn-drive" @click="showDriveBrowser = true">
         <svg width="14" height="12" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
           <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
           <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
@@ -29,17 +38,55 @@
       class="hidden-input"
       @change="handleFileSelect"
     />
+    <input
+      ref="folderInputRef"
+      type="file"
+      multiple
+      webkitdirectory
+      class="hidden-input"
+      @change="handleFolderSelect"
+    />
 
-    <div v-if="selectedFiles.length > 0" class="file-list">
-      <div v-for="(file, index) in selectedFiles" :key="index" class="file-item">
-        <span class="file-type-dot" :class="`file-type-dot--${file.type}`"></span>
-        <span class="file-name">{{ file.name }}</span>
-        <span class="file-ext">{{ getFileExt(file.name) }}</span>
+    <section v-if="selectedFiles.length > 0" class="file-summary-card">
+      <div class="file-summary-header">
+        <div class="file-summary-copy">
+          <span class="file-summary-title">Loaded Files</span>
+          <span class="file-summary-total">{{ selectedFiles.length }} files detected</span>
+        </div>
+        <button type="button" class="summary-toggle-btn" @click="isFileListExpanded = !isFileListExpanded">
+          {{ isFileListExpanded ? 'Hide list' : 'Show list' }}
+        </button>
       </div>
-    </div>
+      <div class="file-summary-stats">
+        <div class="file-summary-stat">
+          <span class="file-type-dot file-type-dot--skeleton"></span>
+          <span>{{ fileStats.skeleton }} skeleton</span>
+        </div>
+        <div class="file-summary-stat">
+          <span class="file-type-dot file-type-dot--atlas"></span>
+          <span>{{ fileStats.atlas }} atlas</span>
+        </div>
+        <div class="file-summary-stat">
+          <span class="file-type-dot file-type-dot--texture"></span>
+          <span>{{ fileStats.texture }} textures</span>
+        </div>
+      </div>
+
+      <div v-if="isFileListExpanded" class="file-list">
+        <div v-for="(file, index) in selectedFiles" :key="index" class="file-item">
+          <span class="file-type-dot" :class="`file-type-dot--${file.type}`"></span>
+          <span class="file-name">{{ file.name }}</span>
+          <span class="file-ext">{{ getFileExt(file.name) }}</span>
+        </div>
+      </div>
+    </section>
 
     <div v-if="isAnalyzingFiles" class="status-hint">
       Analyzing file groups...
+    </div>
+
+    <div v-else class="status-hint">
+      Use Folder to load a whole Spine asset directory without Ctrl multi-select.
     </div>
 
     <section v-if="assetGroups.length > 0" class="subsection">
@@ -104,6 +151,15 @@ import { computed, ref } from 'vue'
 import { analyzeSpineFiles, type SpineFileGroupCandidate } from '../lib/spine/versionDetection'
 import DriveBrowser from './DriveBrowser.vue'
 
+interface FilePickerWindow extends Window {
+  showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle>
+}
+
+interface DirectoryEntryHandle {
+  kind: 'file' | 'directory'
+  getFile?: () => Promise<File>
+}
+
 interface FileData {
   name: string
   file: File
@@ -116,7 +172,9 @@ const emit = defineEmits<{
 
 const showDriveBrowser = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const folderInputRef = ref<HTMLInputElement | null>(null)
 const selectedFiles = ref<FileData[]>([])
+const isFileListExpanded = ref(false)
 const assetGroups = ref<SpineFileGroupCandidate[]>([])
 const analysisIssues = ref<string[]>([])
 const selectedGroupId = ref('')
@@ -129,15 +187,88 @@ const selectedGroup = computed(() => {
 
 const canLoad = computed(() => !!selectedGroup.value?.isLoadable)
 
+const fileStats = computed(() => ({
+  skeleton: selectedFiles.value.filter(file => file.type === 'skeleton').length,
+  atlas: selectedFiles.value.filter(file => file.type === 'atlas').length,
+  texture: selectedFiles.value.filter(file => file.type === 'texture').length
+}))
+
 const resetFileInput = () => {
   if (fileInputRef.value) {
     fileInputRef.value.value = ''
+  }
+  if (folderInputRef.value) {
+    folderInputRef.value.value = ''
   }
 }
 
 const triggerFileInput = () => {
   resetFileInput()
   fileInputRef.value?.click()
+}
+
+const supportedExtensions = new Set(['json', 'atlas', 'png'])
+
+const isSupportedSpineFile = (file: File) => {
+  const ext = file.name.split('.').pop()?.toLowerCase() || ''
+  return supportedExtensions.has(ext)
+}
+
+const filterSupportedFiles = (files: File[]) => files.filter(isSupportedSpineFile)
+
+const readDirectoryFiles = async (directoryHandle: FileSystemDirectoryHandle): Promise<File[]> => {
+  const files: File[] = []
+  const values = (directoryHandle as FileSystemDirectoryHandle & {
+    values?: () => AsyncIterable<DirectoryEntryHandle>
+  }).values
+
+  if (!values) {
+    throw new Error('Directory iteration is not supported in this browser')
+  }
+
+  for await (const entry of values.call(directoryHandle)) {
+    if (entry.kind === 'file') {
+      const file = await entry.getFile?.()
+      if (!file) continue
+      if (isSupportedSpineFile(file)) {
+        files.push(file)
+      }
+      continue
+    }
+
+    files.push(...await readDirectoryFiles(entry as FileSystemDirectoryHandle))
+  }
+
+  return files
+}
+
+const triggerFolderInput = async () => {
+  resetFileInput()
+
+  const pickerWindow = window as FilePickerWindow
+  if (typeof pickerWindow.showDirectoryPicker === 'function') {
+    try {
+      const directoryHandle = await pickerWindow.showDirectoryPicker()
+      const files = await readDirectoryFiles(directoryHandle)
+      if (files.length > 0) {
+        processFiles(files)
+      } else {
+        selectedFiles.value = []
+        isFileListExpanded.value = false
+        assetGroups.value = []
+        selectedGroupId.value = ''
+        analysisIssues.value = ['No supported Spine files found in the selected folder']
+      }
+    } catch (error) {
+      const isAbortError = error instanceof DOMException && error.name === 'AbortError'
+      if (!isAbortError) {
+        analysisIssues.value = ['Failed to read the selected folder']
+      }
+    }
+    return
+  }
+
+  folderInputRef.value?.click()
 }
 
 const getFileExt = (filename: string): string => {
@@ -152,14 +283,35 @@ const handleFileSelect = (event: Event) => {
   target.value = ''
 }
 
+const handleFolderSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (target.files) {
+    processFiles(filterSupportedFiles(Array.from(target.files)))
+  }
+  target.value = ''
+}
+
 const processFiles = async (files: File[]) => {
-  selectedFiles.value = files.map(file => {
+  const supportedFiles = filterSupportedFiles(files)
+
+  if (supportedFiles.length === 0) {
+    selectedFiles.value = []
+    isFileListExpanded.value = false
+    assetGroups.value = []
+    selectedGroupId.value = ''
+    analysisIssues.value = ['No supported Spine files were selected']
+    isAnalyzingFiles.value = false
+    return
+  }
+
+  selectedFiles.value = supportedFiles.map(file => {
     const ext = file.name.split('.').pop()?.toLowerCase()
     let type: 'skeleton' | 'atlas' | 'texture' = 'texture'
     if (ext === 'json') type = 'skeleton'
     else if (ext === 'atlas') type = 'atlas'
     return { name: file.name, file, type }
   })
+  isFileListExpanded.value = false
 
   const requestId = ++fileAnalysisRequestId
   isAnalyzingFiles.value = true
@@ -168,7 +320,7 @@ const processFiles = async (files: File[]) => {
   selectedGroupId.value = ''
 
   try {
-    const analysis = await analyzeSpineFiles(files)
+    const analysis = await analyzeSpineFiles(supportedFiles)
     if (requestId !== fileAnalysisRequestId) return
 
     assetGroups.value = analysis.groups
@@ -264,17 +416,117 @@ const handleDriveConfirm = (files: File[]) => {
 
 .load-buttons {
   display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
-.load-buttons .btn {
+.load-local-group {
+  display: flex;
+  gap: 8px;
+}
+
+.load-local-group .btn,
+.btn-drive {
   flex: 1;
+}
+
+.file-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-md);
+}
+
+.file-summary-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.file-summary-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.file-summary-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.file-summary-total {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.summary-toggle-btn {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition), background var(--transition);
+  flex-shrink: 0;
+}
+
+.summary-toggle-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.file-summary-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.file-summary-stat {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 
 .file-list {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  max-height: 156px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.file-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.file-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+.file-list::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .file-item {
@@ -305,6 +557,12 @@ const handleDriveConfirm = (files: File[]) => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .file-summary-stats {
+    grid-template-columns: 1fr;
+  }
 }
 
 .file-ext {
