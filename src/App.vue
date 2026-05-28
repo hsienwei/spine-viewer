@@ -245,7 +245,7 @@
               <div class="share-config-card">
                 <div class="share-config-title">Share Setup</div>
                 <p class="share-config-copy">
-                  Create a 24-hour preview link. The shared viewer will open with your current animation and skin.
+                  Create a 24-hour preview link by uploading the selected Spine assets to Spine Viewer storage after confirmation.
                 </p>
                 <label class="share-option-row">
                   <span class="share-option-copy">
@@ -464,7 +464,7 @@
             Spine Viewer 是用來載入、檢視與播放 Spine 動畫資產的網頁工具，支援本機檔案與 Google Drive 檔案挑選。
           </p>
           <p class="info-modal-copy">
-            Google Drive 權限只用於列出與下載你明確選取的檔案，供瀏覽器內預覽使用；詳細資料處理方式請參考 Privacy Policy。
+            Google Drive 權限只用於列出與下載你明確選取的檔案。建立分享連結時，會在你確認後上傳目前選取的 Spine 資產以產生 24 小時預覽連結；詳細資料處理方式請參考 Privacy Policy。
           </p>
         </div>
       </section>
@@ -1260,6 +1260,16 @@ const handleError = (error: string) => {
 
 const handleCreateShare = async () => {
   if (!canShare.value || isSharing.value) return
+
+  const confirmed = window.confirm(
+    [
+      'Create a share link?',
+      '',
+      'This will upload the selected Spine asset files to Spine Viewer storage to create a 24-hour preview link.',
+      'It will not modify your Google Drive files or change Google Drive sharing permissions.'
+    ].join('\n')
+  )
+  if (!confirmed) return
 
   shareError.value = ''
   shareUrl.value = ''

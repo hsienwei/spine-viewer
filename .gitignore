@@ -10,3 +10,6 @@ dist/
 !.dev.vars.example
 .env*
 !.env.example
+
+# Local recording artifacts
+/artifacts/
