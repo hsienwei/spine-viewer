@@ -6,7 +6,7 @@
     <title>Spine Viewer Privacy Policy</title>
     <meta
       name="description"
-      content="Spine Viewer Privacy Policy covering Google Drive read-only access, user-selected file preview, and user-confirmed share uploads."
+      content="Spine Viewer Privacy Policy covering Google Drive read-only access, selected file preview, user-confirmed share uploads, and private data protection measures."
     />
     <style>
       :root {
@@ -174,9 +174,9 @@
         <div class="eyebrow">Privacy Policy</div>
         <h1>Spine Viewer 隱私權政策 / Privacy Policy</h1>
         <p>
-          This page explains how Spine Viewer handles Google Drive data, selected Spine asset files, and optional user-confirmed share uploads.
+          This page explains how Spine Viewer handles Google Drive data, selected Spine asset files, optional share uploads, and private data protection measures.
         </p>
-        <div class="meta">Effective Date: May 28, 2026</div>
+        <div class="meta">Effective Date: June 1, 2026</div>
       </section>
 
       <section class="section">
@@ -267,7 +267,41 @@
       </section>
 
       <section class="section">
-        <h2>5. 保留與刪除 / Retention and Deletion</h2>
+        <h2>5. 私密資料保護機制 / Private Data Protection Measures</h2>
+        <div class="lang-grid">
+          <div class="lang-card">
+            <div class="lang-label">繁體中文</div>
+            <ul>
+              <li>所有網站、Google API 與分享 API 請求均透過 HTTPS 傳輸，以保護傳輸中的資料。</li>
+              <li>Google OAuth access token 僅保留在瀏覽器記憶體中，用於目前工作階段；本服務不會將 OAuth token 寫入 localStorage、分享儲存空間或自有資料庫。</li>
+              <li>Google Drive 權限採唯讀用途，僅在使用者操作檔案瀏覽或下載時發送請求。</li>
+              <li>分享檔案儲存在非公開的服務儲存空間；分享連結不會直接暴露底層儲存物件 URL。</li>
+              <li>分享預覽必須透過隨機產生的分享 token 存取，服務端會在讀取 manifest 或檔案物件前驗證 token 是否存在、未過期且未撤銷。</li>
+              <li>分享 token 預設 24 小時後失效，使用者也可在分享紀錄中撤銷分享連結。</li>
+              <li>服務端只會透過受控的分享 API 讀取分享檔案，不提供公開目錄瀏覽或未授權的檔案清單查詢。</li>
+              <li>瀏覽器 localStorage 僅用於介面偏好、Google Drive 導覽狀態與分享紀錄，不儲存 Google OAuth token 或 Google Drive 檔案內容。</li>
+              <li>本服務不會販售 Google 使用者資料，也不會提供給廣告平台、資料仲介或資訊轉售方。</li>
+            </ul>
+          </div>
+          <div class="lang-card">
+            <div class="lang-label">English</div>
+            <ul>
+              <li>All website, Google API, and sharing API requests are transmitted over HTTPS to protect data in transit.</li>
+              <li>Google OAuth access tokens are kept only in browser memory for the current session. The service does not write OAuth tokens to localStorage, share storage, or a first-party database.</li>
+              <li>Google Drive access is used in a read-only manner and only when the user browses or downloads selected files.</li>
+              <li>Shared files are stored in private service storage. Share links do not expose direct underlying storage object URLs.</li>
+              <li>Shared previews require a randomly generated share token. The service validates that the token exists, has not expired, and has not been revoked before returning manifests or file objects.</li>
+              <li>Share tokens expire after 24 hours by default, and users may revoke share links from share history.</li>
+              <li>The server reads shared files only through controlled sharing APIs. It does not provide public directory browsing or unauthenticated file listing.</li>
+              <li>Browser localStorage is used only for interface preferences, Google Drive navigation state, and share history. It does not store Google OAuth tokens or Google Drive file contents.</li>
+              <li>The service does not sell Google user data or provide it to advertising platforms, data brokers, or information resellers.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>6. 保留與刪除 / Retention and Deletion</h2>
         <div class="lang-grid">
           <div class="lang-card">
             <div class="lang-label">繁體中文</div>
@@ -291,7 +325,7 @@
       </section>
 
       <section class="section">
-        <h2>6. 分享與第三方 / Sharing and Third Parties</h2>
+        <h2>7. 分享與第三方 / Sharing and Third Parties</h2>
         <div class="lang-grid">
           <div class="lang-card">
             <div class="lang-label">繁體中文</div>
@@ -299,6 +333,8 @@
               <li>本服務不會販售 Google 使用者資料，也不會提供給廣告平台、資料仲介或資訊轉售方。</li>
               <li>Google Drive 資料僅用於產品中可見的檔案瀏覽、檔案載入、預覽與使用者確認後的分享流程。</li>
               <li>除 Google API、服務儲存、法律遵循、資安處理或你的明確請求所必要者外，本服務不會揭露相關資料。</li>
+              <li>本服務對 Google 使用者資料的使用符合 Google API Services User Data Policy，包括 Limited Use 要求。</li>
+              <li>本服務不會將 Google 使用者資料用於廣告投放、重新定向廣告、信用或貸款評估、使用者監控，或訓練、改善、建立 AI/ML 模型。</li>
             </ul>
           </div>
           <div class="lang-card">
@@ -307,21 +343,23 @@
               <li>The service does not sell Google user data or provide it to advertising platforms, data brokers, or information resellers.</li>
               <li>Google Drive data is used only for visible product features: browsing files, loading files, previewing assets, and user-confirmed sharing.</li>
               <li>Relevant data is disclosed only as necessary for Google APIs, service storage, legal compliance, security handling, or your explicit request.</li>
+              <li>The service's use of Google user data complies with the Google API Services User Data Policy, including the Limited Use requirements.</li>
+              <li>The service does not use Google user data for advertising, retargeting, credit or lending evaluation, user surveillance, or training, improving, or building AI/ML models.</li>
             </ul>
           </div>
         </div>
       </section>
 
       <section class="section">
-        <h2>7. 聯絡方式 / Contact</h2>
+        <h2>8. 聯絡方式 / Contact</h2>
         <div class="lang-grid">
           <div class="lang-card">
             <div class="lang-label">繁體中文</div>
-            <p>若你對本政策或資料處理方式有疑問，請透過下列公開管道聯絡。</p>
+            <p>若你對本政策、私密資料保護機制或資料處理方式有疑問，請透過下列公開管道聯絡。</p>
           </div>
           <div class="lang-card">
             <div class="lang-label">English</div>
-            <p>If you have questions about this policy or data handling, please use the public contact channels below.</p>
+            <p>If you have questions about this policy, private data protection measures, or data handling, please use the public contact channels below.</p>
           </div>
         </div>
         <div class="contact-row" style="margin-top: 18px;">
