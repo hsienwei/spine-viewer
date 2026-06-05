@@ -213,7 +213,7 @@
             <div class="lang-label">English</div>
             <ul>
               <li>The service currently requests `https://www.googleapis.com/auth/drive.readonly`.</li>
-              <li>This scope is used to display Google Drive files and folders inside the app and to download Spine files you explicitly select.</li>
+              <li>This scope is used to display Google Drive files and folders inside the app and to download Spine files you explicitly select, including supported Spine files inside folders you select.</li>
               <li>The service does not create, modify, delete, move, rename, or change permissions for any Google Drive files.</li>
             </ul>
           </div>
@@ -234,8 +234,8 @@
           <div class="lang-card">
             <div class="lang-label">English</div>
             <ul>
-              <li>To read file and folder metadata so the app can provide an in-app Google Drive browser.</li>
-              <li>To read selected `.json`, `.skel`, `.atlas`, and texture files for parsing, grouping, previewing, and playing Spine animations.</li>
+              <li>To read file and folder metadata so the app can provide Google Drive file picking.</li>
+              <li>To read selected `.json`, `.skel`, `.atlas`, and texture files, including supported files inside selected folders, for parsing, grouping, previewing, and playing Spine animations.</li>
               <li>OAuth access tokens are used only to send Google Drive API requests during the current session.</li>
             </ul>
           </div>
@@ -293,7 +293,7 @@
               <li>Shared previews require a randomly generated share token. The service validates that the token exists, has not expired, and has not been revoked before returning manifests or file objects.</li>
               <li>Share tokens expire after 24 hours by default, and users may revoke share links from share history.</li>
               <li>The server reads shared files only through controlled sharing APIs. It does not provide public directory browsing or unauthenticated file listing.</li>
-              <li>Browser localStorage is used only for interface preferences, Google Drive navigation state, and share history. It does not store Google OAuth tokens or Google Drive file contents.</li>
+              <li>Browser localStorage is used only for interface preferences and share history. It does not store Google OAuth tokens or Google Drive file contents.</li>
               <li>The service does not sell Google user data or provide it to advertising platforms, data brokers, or information resellers.</li>
             </ul>
           </div>
@@ -317,7 +317,7 @@
             <ul>
               <li>Files that are not shared are primarily processed during the browser session.</li>
               <li>Share links expire after 24 hours by default; after expiration or revocation, the shared preview becomes unavailable.</li>
-              <li>Interface preferences, Google Drive navigation state, and share history may be stored in browser `localStorage`.</li>
+              <li>Interface preferences and share history may be stored in browser `localStorage`.</li>
               <li>You may clear site data, revoke Google access, or use share history revocation to remove future access capability.</li>
             </ul>
           </div>

@@ -17,7 +17,7 @@
           Folder
         </button>
       </div>
-      <button class="btn btn-outline btn-drive" @click="showDriveBrowser = true">
+      <button class="btn btn-outline btn-drive" :disabled="isDrivePicking" @click="openDriveFiles">
         <svg width="14" height="12" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
           <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
           <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
@@ -26,7 +26,7 @@
           <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
           <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
         </svg>
-        Drive
+        {{ isDrivePicking ? 'Picking...' : 'Drive' }}
       </button>
     </div>
 
@@ -138,18 +138,13 @@
       Load Animation
     </button>
 
-    <DriveBrowser
-      v-if="showDriveBrowser"
-      @close="showDriveBrowser = false"
-      @confirm="handleDriveConfirm"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { analyzeSpineFiles, type SpineFileGroupCandidate } from '../lib/spine/versionDetection'
-import DriveBrowser from './DriveBrowser.vue'
+import { useGoogleDrivePicker } from '../composables/useGoogleDrivePicker'
 
 interface FilePickerWindow extends Window {
   showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle>
@@ -170,7 +165,8 @@ const emit = defineEmits<{
   'file-selected': [payload: { files: File[] }]
 }>()
 
-const showDriveBrowser = ref(false)
+const { openDrivePicker } = useGoogleDrivePicker()
+
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const folderInputRef = ref<HTMLInputElement | null>(null)
 const selectedFiles = ref<FileData[]>([])
@@ -179,6 +175,7 @@ const assetGroups = ref<SpineFileGroupCandidate[]>([])
 const analysisIssues = ref<string[]>([])
 const selectedGroupId = ref('')
 const isAnalyzingFiles = ref(false)
+const isDrivePicking = ref(false)
 let fileAnalysisRequestId = 0
 
 const selectedGroup = computed(() => {
@@ -205,6 +202,25 @@ const resetFileInput = () => {
 const triggerFileInput = () => {
   resetFileInput()
   fileInputRef.value?.click()
+}
+
+const openDriveFiles = async () => {
+  if (isDrivePicking.value) return
+
+  resetFileInput()
+  isDrivePicking.value = true
+  analysisIssues.value = []
+
+  try {
+    const files = await openDrivePicker()
+    if (files.length > 0) {
+      await processFiles(files)
+    }
+  } catch (error) {
+    analysisIssues.value = [error instanceof Error ? error.message : 'Failed to load files from Google Drive']
+  } finally {
+    isDrivePicking.value = false
+  }
 }
 
 const supportedExtensions = new Set(['json', 'atlas', 'png'])
@@ -348,11 +364,6 @@ const loadFiles = () => {
   }
 }
 
-const handleDriveConfirm = (files: File[]) => {
-  showDriveBrowser.value = false
-  resetFileInput()
-  if (files.length > 0) processFiles(files)
-}
 </script>
 
 <style scoped>
@@ -391,6 +402,17 @@ const handleDriveConfirm = (files: File[]) => {
   border-color: var(--accent);
   color: var(--accent);
   background: var(--accent-dim);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.btn-outline:disabled:hover {
+  border-color: var(--border);
+  color: var(--text-secondary);
+  background: transparent;
 }
 
 .btn-accent {
