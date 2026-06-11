@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { createGoogleOAuthState, isValidGoogleOAuthState } from '../lib/googleOAuthState'
 
 const CLIENT_ID = '749366685781-0cah3e4qgffj8e0hb8v4h65f6n5c0r2n.apps.googleusercontent.com'
 const API_KEY = 'AIzaSyD6uVUdGZwUw_Ttt8k7dmBAX8anL97aps0'
@@ -11,6 +12,7 @@ let tokenClient: any = null
 let accessToken = ''
 let resolveFiles: ((files: File[]) => void) | null = null
 let rejectFiles: ((error: Error) => void) | null = null
+let pendingOAuthState = ''
 
 const loadScript = (src: string) =>
   new Promise<void>((resolve, reject) => {
@@ -182,6 +184,15 @@ export function useGoogleDrivePicker() {
       client_id: CLIENT_ID,
       scope: SCOPE,
       callback: (res: any) => {
+        if (!isValidGoogleOAuthState(pendingOAuthState, res.state)) {
+          const authError = new Error('Google OAuth state validation failed')
+          pendingOAuthState = ''
+          error.value = authError.message
+          rejectFiles?.(authError)
+          clearPendingPicker()
+          return
+        }
+        pendingOAuthState = ''
         if (res.error) {
           const authError = new Error(res.error_description || res.error)
           error.value = authError.message
@@ -207,7 +218,8 @@ export function useGoogleDrivePicker() {
       if (accessToken) {
         showPicker()
       } else {
-        tokenClient.requestAccessToken({ prompt: 'consent' })
+        pendingOAuthState = createGoogleOAuthState()
+        tokenClient.requestAccessToken({ prompt: 'consent', state: pendingOAuthState })
       }
     })
   }

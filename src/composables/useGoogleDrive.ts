@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { createGoogleOAuthState, isValidGoogleOAuthState } from '../lib/googleOAuthState'
 
 const CLIENT_ID = '749366685781-0cah3e4qgffj8e0hb8v4h65f6n5c0r2n.apps.googleusercontent.com'
 const SCOPE = 'https://www.googleapis.com/auth/drive.readonly'
@@ -7,6 +8,8 @@ let gapiReady = false
 let tokenClient: any = null
 let accessToken = ''
 let onToken: (() => void) | null = null
+let onTokenError: ((error: Error) => void) | null = null
+let pendingOAuthState = ''
 
 export interface DriveItem {
   id: string
@@ -32,10 +35,27 @@ const ensureReady = async () => {
     client_id: CLIENT_ID,
     scope: SCOPE,
     callback: (res: any) => {
+      if (!isValidGoogleOAuthState(pendingOAuthState, res.state)) {
+        const error = new Error('Google OAuth state validation failed')
+        pendingOAuthState = ''
+        onTokenError?.(error)
+        onToken = null
+        onTokenError = null
+        return
+      }
+      pendingOAuthState = ''
+      if (res.error) {
+        const error = new Error(res.error_description || res.error)
+        onTokenError?.(error)
+        onToken = null
+        onTokenError = null
+        return
+      }
       if (res.access_token) {
         accessToken = res.access_token
         onToken?.()
         onToken = null
+        onTokenError = null
       }
     },
   })
@@ -65,9 +85,11 @@ export function useGoogleDrive() {
   const signIn = async (): Promise<void> => {
     await ensureReady()
     if (accessToken) return
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       onToken = () => { isAuthed.value = true; resolve() }
-      tokenClient.requestAccessToken({ prompt: '' })
+      onTokenError = reject
+      pendingOAuthState = createGoogleOAuthState()
+      tokenClient.requestAccessToken({ prompt: '', state: pendingOAuthState })
     })
   }
 
