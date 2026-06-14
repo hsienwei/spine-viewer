@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { createGoogleOAuthState, isValidGoogleOAuthState } from '../lib/googleOAuthState'
 
-const CLIENT_ID = '749366685781-0cah3e4qgffj8e0hb8v4h65f6n5c0r2n.apps.googleusercontent.com'
+const CLIENT_ID = '749366685781-jtf30dimpd6i2rto68q2tc9gafabkd94.apps.googleusercontent.com'
 const API_KEY = 'AIzaSyD6uVUdGZwUw_Ttt8k7dmBAX8anL97aps0'
 const SCOPE = 'https://www.googleapis.com/auth/drive.readonly'
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
