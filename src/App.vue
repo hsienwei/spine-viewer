@@ -464,7 +464,7 @@
             Spine Viewer 是用來載入、檢視與播放 Spine 動畫資產的網頁工具，支援本機檔案與 Google Drive 檔案挑選。
           </p>
           <p class="info-modal-copy">
-            Google Drive 權限只用於列出與下載你明確選取的檔案。建立分享連結時，會在你確認後上傳目前選取的 Spine 資產以產生 24 小時預覽連結；詳細資料處理方式請參考 Privacy Policy。
+            Google Drive 權限只用於透過 Google Picker 選取並下載你明確選擇的檔案。建立分享連結時，會在你確認後上傳目前選取的 Spine 資產以產生 24 小時預覽連結；詳細資料處理方式請參考 Privacy Policy。
           </p>
         </div>
       </section>

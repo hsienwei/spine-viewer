@@ -204,16 +204,16 @@
           <div class="lang-card">
             <div class="lang-label">繁體中文</div>
             <ul>
-              <li>本服務目前請求 `https://www.googleapis.com/auth/drive.readonly`。</li>
-              <li>此權限用於在應用程式內顯示你可存取的 Google Drive 檔案與資料夾，並下載你明確選取的 Spine 檔案。</li>
+              <li>本服務目前請求 `https://www.googleapis.com/auth/drive.file`。</li>
+              <li>此權限搭配 Google Picker 使用，讓你選取 Spine 檔案，並只下載你在 picker 中明確選擇的檔案。</li>
               <li>本服務不會建立、修改、刪除、搬移、重新命名或變更任何 Google Drive 檔案權限。</li>
             </ul>
           </div>
           <div class="lang-card">
             <div class="lang-label">English</div>
             <ul>
-              <li>The service currently requests `https://www.googleapis.com/auth/drive.readonly`.</li>
-              <li>This scope is used to display Google Drive files and folders inside the app and to download Spine files you explicitly select, including supported Spine files inside folders you select.</li>
+              <li>The service currently requests `https://www.googleapis.com/auth/drive.file`.</li>
+              <li>This scope is used with Google Picker to let you select Spine files and to download only the files you explicitly choose in the picker.</li>
               <li>The service does not create, modify, delete, move, rename, or change permissions for any Google Drive files.</li>
             </ul>
           </div>
@@ -226,7 +226,7 @@
           <div class="lang-card">
             <div class="lang-label">繁體中文</div>
             <ul>
-              <li>讀取檔案與資料夾中繼資料，以提供應用程式內的 Google Drive 瀏覽介面。</li>
+              <li>顯示 Google Picker 並接收你明確選擇的檔案。</li>
               <li>讀取你選取的 `.json`、`.skel`、`.atlas` 與貼圖檔案，用於解析、分組、預覽與播放 Spine 動畫。</li>
               <li>OAuth access token 僅用於目前工作階段向 Google Drive API 發送請求。</li>
             </ul>
@@ -234,8 +234,8 @@
           <div class="lang-card">
             <div class="lang-label">English</div>
             <ul>
-              <li>To read file and folder metadata so the app can provide Google Drive file picking.</li>
-              <li>To read selected `.json`, `.skel`, `.atlas`, and texture files, including supported files inside selected folders, for parsing, grouping, previewing, and playing Spine animations.</li>
+              <li>To show Google Picker and receive the files you explicitly choose.</li>
+              <li>To read selected `.json`, `.skel`, `.atlas`, and texture files for parsing, grouping, previewing, and playing Spine animations.</li>
               <li>OAuth access tokens are used only to send Google Drive API requests during the current session.</li>
             </ul>
           </div>
@@ -274,7 +274,7 @@
             <ul>
               <li>所有網站、Google API 與分享 API 請求均透過 HTTPS 傳輸，以保護傳輸中的資料。</li>
               <li>Google OAuth access token 僅保留在瀏覽器記憶體中，用於目前工作階段；本服務不會將 OAuth token 寫入 localStorage、分享儲存空間或自有資料庫。</li>
-              <li>Google Drive 權限採唯讀用途，僅在使用者操作檔案瀏覽或下載時發送請求。</li>
+              <li>Google Drive 權限採唯讀用途，僅在使用者透過 Google Picker 選取或下載已選檔案時發送請求。</li>
               <li>分享檔案儲存在非公開的服務儲存空間；分享連結不會直接暴露底層儲存物件 URL。</li>
               <li>分享預覽必須透過隨機產生的分享 token 存取，服務端會在讀取 manifest 或檔案物件前驗證 token 是否存在、未過期且未撤銷。</li>
               <li>分享 token 預設 24 小時後失效，使用者也可在分享紀錄中撤銷分享連結。</li>
@@ -288,7 +288,7 @@
             <ul>
               <li>All website, Google API, and sharing API requests are transmitted over HTTPS to protect data in transit.</li>
               <li>Google OAuth access tokens are kept only in browser memory for the current session. The service does not write OAuth tokens to localStorage, share storage, or a first-party database.</li>
-              <li>Google Drive access is used in a read-only manner and only when the user browses or downloads selected files.</li>
+              <li>Google Drive access is used in a read-only manner and only when the user selects or downloads chosen files through Google Picker.</li>
               <li>Shared files are stored in private service storage. Share links do not expose direct underlying storage object URLs.</li>
               <li>Shared previews require a randomly generated share token. The service validates that the token exists, has not expired, and has not been revoked before returning manifests or file objects.</li>
               <li>Share tokens expire after 24 hours by default, and users may revoke share links from share history.</li>
@@ -331,7 +331,7 @@
             <div class="lang-label">繁體中文</div>
             <ul>
               <li>本服務不會販售 Google 使用者資料，也不會提供給廣告平台、資料仲介或資訊轉售方。</li>
-              <li>Google Drive 資料僅用於產品中可見的檔案瀏覽、檔案載入、預覽與使用者確認後的分享流程。</li>
+              <li>Google Drive 資料僅用於產品中可見的 Google Picker 選檔、檔案載入、預覽與使用者確認後的分享流程。</li>
               <li>除 Google API、服務儲存、法律遵循、資安處理或你的明確請求所必要者外，本服務不會揭露相關資料。</li>
               <li>本服務對 Google 使用者資料的使用符合 Google API Services User Data Policy，包括 Limited Use 要求。</li>
               <li>本服務不會將 Google 使用者資料用於廣告投放、重新定向廣告、信用或貸款評估、使用者監控，或訓練、改善、建立 AI/ML 模型。</li>
@@ -341,7 +341,7 @@
             <div class="lang-label">English</div>
             <ul>
               <li>The service does not sell Google user data or provide it to advertising platforms, data brokers, or information resellers.</li>
-              <li>Google Drive data is used only for visible product features: browsing files, loading files, previewing assets, and user-confirmed sharing.</li>
+              <li>Google Drive data is used only for visible product features: selecting files through Google Picker, loading files, previewing assets, and user-confirmed sharing.</li>
               <li>Relevant data is disclosed only as necessary for Google APIs, service storage, legal compliance, security handling, or your explicit request.</li>
               <li>The service's use of Google user data complies with the Google API Services User Data Policy, including the Limited Use requirements.</li>
               <li>The service does not use Google user data for advertising, retargeting, credit or lending evaluation, user surveillance, or training, improving, or building AI/ML models.</li>

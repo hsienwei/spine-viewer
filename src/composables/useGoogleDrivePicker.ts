@@ -3,7 +3,7 @@ import { createGoogleOAuthState, isValidGoogleOAuthState } from '../lib/googleOA
 
 const CLIENT_ID = '749366685781-jtf30dimpd6i2rto68q2tc9gafabkd94.apps.googleusercontent.com'
 const API_KEY = 'AIzaSyD6uVUdGZwUw_Ttt8k7dmBAX8anL97aps0'
-const SCOPE = 'https://www.googleapis.com/auth/drive.readonly'
+const SCOPE = 'https://www.googleapis.com/auth/drive.file'
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
 const SUPPORTED_EXTENSIONS = new Set(['json', 'atlas', 'png'])
 // Module-level singletons shared across component instances
@@ -38,7 +38,7 @@ export function useGoogleDrivePicker() {
     const g = (window as any).google
     const view = new g.picker.DocsView()
       .setIncludeFolders(true)
-      .setSelectFolderEnabled(true)
+      .setSelectFolderEnabled(false)
       .setMode(g.picker.DocsViewMode.LIST)
     if (!ownedByMe) view.setOwnedByMe(false)
     return view
@@ -71,52 +71,6 @@ export function useGoogleDrivePicker() {
     return new File([blob], name)
   }
 
-  const listFolderItems = async (folderId: string) => {
-    const items: Array<{ id: string; name: string; mimeType: string }> = []
-    let pageToken = ''
-
-    do {
-      const params = new URLSearchParams({
-        q: `'${folderId}' in parents and trashed=false`,
-        fields: 'nextPageToken,files(id,name,mimeType)',
-        orderBy: 'folder,name',
-        pageSize: '1000',
-        includeItemsFromAllDrives: 'true',
-        supportsAllDrives: 'true',
-      })
-      if (pageToken) params.set('pageToken', pageToken)
-
-      const res = await driveFetch(`https://www.googleapis.com/drive/v3/files?${params.toString()}`)
-      if (!res.ok) {
-        throw new Error(`Failed to list Google Drive folder: ${res.status}`)
-      }
-
-      const data = await res.json()
-      items.push(...(data.files || []))
-      pageToken = data.nextPageToken || ''
-    } while (pageToken)
-
-    return items
-  }
-
-  const downloadFolderFiles = async (folderId: string): Promise<File[]> => {
-    const folderFiles: File[] = []
-    const items = await listFolderItems(folderId)
-
-    for (const item of items) {
-      if (item.mimeType === FOLDER_MIME_TYPE) {
-        folderFiles.push(...await downloadFolderFiles(item.id))
-        continue
-      }
-
-      if (!item.mimeType.startsWith('application/vnd.google-apps.') && isSupportedSpineFileName(item.name)) {
-        folderFiles.push(await downloadDriveFile(item.id, item.name))
-      }
-    }
-
-    return folderFiles
-  }
-
   const showPicker = () => {
     const g = (window as any).google
     const builder = new g.picker.PickerBuilder()
@@ -143,8 +97,7 @@ export function useGoogleDrivePicker() {
         try {
           for (const doc of data.docs) {
             if (doc.mimeType === FOLDER_MIME_TYPE) {
-              files.push(...await downloadFolderFiles(doc.id))
-              continue
+              throw new Error('Please select Spine asset files directly. Google Drive folder loading requires broader Drive access.')
             }
 
             if (doc.mimeType?.startsWith('application/vnd.google-apps.')) {
