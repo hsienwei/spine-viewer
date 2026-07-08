@@ -4,6 +4,7 @@ import { createGoogleOAuthState, isValidGoogleOAuthState } from '../lib/googleOA
 const CLIENT_ID = '749366685781-jtf30dimpd6i2rto68q2tc9gafabkd94.apps.googleusercontent.com'
 const API_KEY = 'AIzaSyD6uVUdGZwUw_Ttt8k7dmBAX8anL97aps0'
 const SCOPE = 'https://www.googleapis.com/auth/drive.file'
+const INCLUDE_GRANTED_SCOPES = false
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
 const SUPPORTED_EXTENSIONS = new Set(['json', 'atlas', 'png'])
 // Module-level singletons shared across component instances
@@ -136,6 +137,7 @@ export function useGoogleDrivePicker() {
     tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
       client_id: CLIENT_ID,
       scope: SCOPE,
+      include_granted_scopes: INCLUDE_GRANTED_SCOPES,
       callback: (res: any) => {
         if (!isValidGoogleOAuthState(pendingOAuthState, res.state)) {
           const authError = new Error('Google OAuth state validation failed')
@@ -172,7 +174,11 @@ export function useGoogleDrivePicker() {
         showPicker()
       } else {
         pendingOAuthState = createGoogleOAuthState()
-        tokenClient.requestAccessToken({ prompt: 'consent', state: pendingOAuthState })
+        tokenClient.requestAccessToken({
+          prompt: 'consent',
+          state: pendingOAuthState,
+          include_granted_scopes: INCLUDE_GRANTED_SCOPES,
+        })
       }
     })
   }
