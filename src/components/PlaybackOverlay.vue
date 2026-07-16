@@ -66,12 +66,18 @@
     </div>
 
     <div class="controls-row">
-      <button type="button" class="ctrl-btn" @click="stop" title="Stop">
+      <button type="button" class="ctrl-btn" @click="stop" title="Stop" aria-label="Stop playback and return to start">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
           <rect x="1.5" y="1.5" width="9" height="9" rx="1.5"/>
         </svg>
       </button>
-      <button type="button" class="ctrl-btn ctrl-btn--primary" @click="togglePlay" :title="isPlaying ? 'Pause' : 'Play'">
+      <button
+        type="button"
+        class="ctrl-btn ctrl-btn--primary"
+        @click="togglePlay"
+        :title="isPlaying ? 'Pause' : 'Play'"
+        :aria-label="isPlaying ? 'Pause playback' : 'Play animation'"
+      >
         <svg v-if="isPlaying" width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
           <rect x="2" y="2" width="3.5" height="10" rx="1"/>
           <rect x="8.5" y="2" width="3.5" height="10" rx="1"/>
@@ -90,6 +96,8 @@
           step="0.1"
           :value="playbackRate || 1"
           class="range-track range-track--speed"
+          aria-label="Playback speed"
+          :aria-valuetext="`${(playbackRate || 1).toFixed(1)}x speed`"
           @input="setSpeed($event)"
         />
       </div>
@@ -717,7 +725,7 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 640px), (max-width: 900px) and (max-height: 480px) {
   .playback-overlay {
     left: 10px;
     right: 10px;
@@ -748,6 +756,35 @@ onUnmounted(() => {
     gap: 8px;
   }
 
+  .ctrl-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .ctrl-btn--primary {
+    width: 48px;
+    height: 48px;
+  }
+
+  .timeline-track {
+    height: 12px;
+  }
+
+  .timeline-thumb {
+    width: 20px;
+    height: 20px;
+  }
+
+  .timeline-marker {
+    width: 44px;
+    height: 44px;
+  }
+
+  .timeline-marker-dot {
+    width: 10px;
+    height: 10px;
+  }
+
   .speed-group {
     flex: 1;
     min-width: 0;
@@ -756,6 +793,20 @@ onUnmounted(() => {
   .speed-label {
     width: 28px;
     font-size: 10px;
+  }
+
+  .range-track {
+    height: 6px;
+  }
+
+  .range-track--speed::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+  }
+
+  .range-track::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
   }
 
   .timeline-tooltip {

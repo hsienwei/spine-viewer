@@ -2,14 +2,14 @@
   <div class="load-files-panel">
     <div class="load-buttons">
       <div class="load-local-group">
-        <button class="btn btn-outline" @click="triggerFileInput">
+        <button class="btn btn-outline" type="button" aria-label="Select Spine files" @click="triggerFileInput">
           <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
             <path d="M6.5 1v8M3 6l3.5 3.5L10 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M1 10v1.5a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5V10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
           </svg>
           Files
         </button>
-        <button class="btn btn-outline" @click="triggerFolderInput">
+        <button class="btn btn-outline btn-folder" type="button" aria-label="Select a Spine asset folder" @click="triggerFolderInput">
           <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
             <path d="M1.5 4.25h3.1l1.05 1.15H11.5v4.85a.75.75 0 0 1-.75.75h-8.5a.75.75 0 0 1-.75-.75z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
             <path d="M1.5 5.4v-2.15a.75.75 0 0 1 .75-.75h2.05l1.05 1.15h5.4a.75.75 0 0 1 .75.75V5.4" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
@@ -17,7 +17,7 @@
           Folder
         </button>
       </div>
-      <button class="btn btn-outline btn-drive" :disabled="isDrivePicking" @click="openDriveFiles">
+      <button class="btn btn-outline btn-drive" type="button" :disabled="isDrivePicking" aria-label="Select Spine files from Google Drive" @click="openDriveFiles">
         <svg width="14" height="12" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
           <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
           <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
@@ -45,6 +45,14 @@
       webkitdirectory
       class="hidden-input"
       @change="handleFolderSelect"
+    />
+    <input
+      ref="supplementalInputRef"
+      type="file"
+      multiple
+      accept=".json,.atlas,.png"
+      class="hidden-input"
+      @change="handleSupplementalFileSelect"
     />
 
     <section v-if="selectedFiles.length > 0" class="file-summary-card">
@@ -118,7 +126,7 @@
               <span>{{ group.textureFiles.length }} textures</span>
             </div>
             <div v-if="group.issues.length > 0" class="group-issues">
-              {{ group.issues.join(' 繚 ') }}
+              {{ group.issues.join(' · ') }}
             </div>
           </div>
         </label>
@@ -128,6 +136,16 @@
     <div v-if="analysisIssues.length > 0" class="missing-hint">
       <div v-for="issue in analysisIssues" :key="issue">{{ issue }}</div>
     </div>
+
+    <button
+      v-if="selectedFiles.length > 0 && !canLoad"
+      class="btn btn-outline btn-supplemental"
+      type="button"
+      :disabled="isAnalyzingFiles"
+      @click="triggerSupplementalInput"
+    >
+      Add Missing Files
+    </button>
 
     <button
       v-if="selectedFiles.length > 0"
@@ -169,6 +187,7 @@ const { openDrivePicker } = useGoogleDrivePicker()
 
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const folderInputRef = ref<HTMLInputElement | null>(null)
+const supplementalInputRef = ref<HTMLInputElement | null>(null)
 const selectedFiles = ref<FileData[]>([])
 const isFileListExpanded = ref(false)
 const assetGroups = ref<SpineFileGroupCandidate[]>([])
@@ -197,11 +216,21 @@ const resetFileInput = () => {
   if (folderInputRef.value) {
     folderInputRef.value.value = ''
   }
+  if (supplementalInputRef.value) {
+    supplementalInputRef.value.value = ''
+  }
 }
 
 const triggerFileInput = () => {
   resetFileInput()
   fileInputRef.value?.click()
+}
+
+const triggerSupplementalInput = () => {
+  if (supplementalInputRef.value) {
+    supplementalInputRef.value.value = ''
+  }
+  supplementalInputRef.value?.click()
 }
 
 const openDriveFiles = async () => {
@@ -303,6 +332,21 @@ const handleFolderSelect = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files) {
     processFiles(filterSupportedFiles(Array.from(target.files)))
+  }
+  target.value = ''
+}
+
+const handleSupplementalFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (target.files) {
+    const existingFiles = selectedFiles.value.map(file => file.file)
+    const incomingFiles = filterSupportedFiles(Array.from(target.files))
+    const mergedByName = new Map<string, File>()
+
+    existingFiles.forEach(file => mergedByName.set(file.name, file))
+    incomingFiles.forEach(file => mergedByName.set(file.name, file))
+
+    processFiles([...mergedByName.values()])
   }
   target.value = ''
 }
@@ -581,7 +625,19 @@ const loadFiles = () => {
   white-space: nowrap;
 }
 
-@media (max-width: 520px) {
+@media (max-width: 640px), (max-width: 900px) and (max-height: 480px) {
+  .load-buttons {
+    gap: 10px;
+  }
+
+  .btn {
+    min-height: 44px;
+  }
+
+  .btn-drive {
+    order: -1;
+  }
+
   .file-summary-stats {
     grid-template-columns: 1fr;
   }

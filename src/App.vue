@@ -1,56 +1,18 @@
 <template>
   <div class="spine-viewer">
-    <div v-if="isMobileViewport" class="mobile-tab-bar">
-      <div class="mobile-tab-group" role="tablist" aria-label="Mobile viewer sections">
-        <button
-          type="button"
-          class="mobile-tab-btn"
-          :class="{ 'mobile-tab-btn--active': activeMobileTab === 'viewer' }"
-          :aria-selected="activeMobileTab === 'viewer'"
-          @click="setActiveMobileTab('viewer')"
-        >
-          <svg class="mobile-tab-icon" width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-            <path d="M2.5 4.5h13v9h-13z" stroke="currentColor" stroke-width="1.4" rx="1.6"/>
-            <path d="M6 13.5h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-          </svg>
-          <span>Viewer</span>
-        </button>
-        <button
-          type="button"
-          class="mobile-tab-btn"
-          :class="{ 'mobile-tab-btn--active': activeMobileTab === 'controls' }"
-          :aria-selected="activeMobileTab === 'controls'"
-          @click="setActiveMobileTab('controls')"
-        >
-          <svg class="mobile-tab-icon" width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-            <path d="M4 5.5h10M4 9h10M4 12.5h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-            <circle cx="6" cy="5.5" r="1.1" fill="currentColor"/>
-            <circle cx="12" cy="9" r="1.1" fill="currentColor"/>
-            <circle cx="8" cy="12.5" r="1.1" fill="currentColor"/>
-          </svg>
-          <span>Controls</span>
-        </button>
-      </div>
-      <button class="theme-toggle mobile-theme-toggle" @click="toggleTheme" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
-        <svg v-if="isDark" width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.4"/>
-          <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M10.01 3.99l1.06-1.06M2.93 11.07l1.06-1.06" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        </svg>
-        <svg v-else width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <path d="M11.5 8.5A5 5 0 1 1 5.5 2.5a3.5 3.5 0 0 0 6 6z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-    </div>
-
     <aside
+      id="mobile-control-sheet"
       class="sidebar"
       :class="{
         'sidebar--share-preview': isSharePreview,
-        'sidebar--mobile-tabbed': isMobileViewport,
-        'sidebar--mobile-visible': isMobileViewport && activeMobileTab === 'controls'
+        'sidebar--mobile-sheet': isMobileViewport,
+        [`sidebar--mobile-${mobileSheetState}`]: isMobileViewport,
+        [`sidebar--mobile-panel-${activeMobilePanel}`]: isMobileViewport
       }"
+      :aria-hidden="isMobileViewport && mobileSheetState === 'collapsed'"
     >
       <div class="sidebar-brand">
+        <div v-if="isMobileViewport" class="mobile-sheet-grabber" aria-hidden="true"></div>
         <div class="sidebar-brand-copy">
           <div class="brand-title">
             <span class="brand-spine">SPINE</span>
@@ -58,7 +20,75 @@
           </div>
           <span class="brand-version">v{{ appVersion }}</span>
         </div>
-        <button v-if="!isMobileViewport" class="theme-toggle" @click="toggleTheme" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
+        <div v-if="isMobileViewport" class="mobile-sheet-actions" aria-label="Sheet size controls">
+          <div class="mobile-more-wrap">
+            <button
+              type="button"
+              class="mobile-sheet-icon-btn"
+              aria-label="More information links"
+              :aria-expanded="isMobileMoreOpen"
+              @click="isMobileMoreOpen = !isMobileMoreOpen"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <circle cx="8" cy="3.25" r="1.25"/>
+                <circle cx="8" cy="8" r="1.25"/>
+                <circle cx="8" cy="12.75" r="1.25"/>
+              </svg>
+            </button>
+            <div v-if="isMobileMoreOpen" class="mobile-more-menu">
+              <button
+                type="button"
+                class="mobile-more-item"
+                @click="openInfoFromMobileMore"
+              >
+                Info
+              </button>
+              <a
+                class="mobile-more-item"
+                :href="privacyPolicyUrl"
+                target="_blank"
+                rel="noreferrer"
+                @click="isMobileMoreOpen = false"
+              >
+                Privacy Policy
+              </a>
+              <a
+                class="mobile-more-item"
+                :href="termsOfServiceUrl"
+                target="_blank"
+                rel="noreferrer"
+                @click="isMobileMoreOpen = false"
+              >
+                Terms of Service
+              </a>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="mobile-sheet-icon-btn"
+            :aria-label="mobileSheetState === 'full' ? 'Set controls sheet to half height' : 'Expand controls sheet'"
+            @click="toggleMobileSheetSize"
+          >
+            <svg v-if="mobileSheetState === 'full'" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <svg v-else width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M4 10l4-4 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <button type="button" class="mobile-sheet-icon-btn" aria-label="Collapse controls sheet" @click="setMobileSheetState('collapsed')">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <button
+          v-if="!isMobileViewport"
+          class="theme-toggle"
+          @click="toggleTheme"
+          :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+          :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+        >
           <svg v-if="isDark" width="14" height="14" viewBox="0 0 14 14" fill="none">
             <circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.4"/>
             <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M10.01 3.99l1.06-1.06M2.93 11.07l1.06-1.06" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
@@ -70,10 +100,11 @@
       </div>
 
       <div class="sidebar-content">
-        <div v-if="!isSharePreview" class="sidebar-panel">
+        <div v-if="!isSharePreview" class="sidebar-panel sidebar-panel--load">
           <button
             type="button"
             class="sidebar-panel-header"
+            :aria-expanded="isLoadFilesPanelOpen"
             @click="isLoadFilesPanelOpen = !isLoadFilesPanelOpen"
           >
             <span>Load</span>
@@ -88,10 +119,11 @@
           </div>
         </div>
 
-        <div v-if="!isSharePreview && animations.length > 0" class="sidebar-panel">
+        <div v-if="!isSharePreview && animations.length > 0" class="sidebar-panel sidebar-panel--animate">
           <button
             type="button"
             class="sidebar-panel-header"
+            :aria-expanded="isAnimatePanelOpen"
             @click="isAnimatePanelOpen = !isAnimatePanelOpen"
           >
             <span>Animate</span>
@@ -110,10 +142,11 @@
           </div>
         </div>
 
-        <div v-if="!isSharePreview && hasInspectPanel" class="sidebar-panel">
+        <div v-if="!isSharePreview && hasInspectPanel" class="sidebar-panel sidebar-panel--inspect">
           <button
             type="button"
             class="sidebar-panel-header"
+            :aria-expanded="isInspectPanelOpen"
             @click="isInspectPanelOpen = !isInspectPanelOpen"
           >
             <span>Inspect</span>
@@ -212,10 +245,11 @@
           </div>
         </div>
 
-        <div v-if="!isSharePreview" class="sidebar-panel">
+        <div v-if="!isSharePreview" class="sidebar-panel sidebar-panel--share">
           <button 
             type="button" 
             class="sidebar-panel-header" 
+            :aria-expanded="isSharePanelOpen"
             @click="isSharePanelOpen = !isSharePanelOpen"
           >
             <span>Share</span>
@@ -287,7 +321,7 @@
                 type="button"
                 class="share-primary-btn"
                 :disabled="!canShare || isSharing"
-                @click="handleCreateShare"
+                @click="openShareConfirm"
               >
                 {{ isSharing ? 'Sharing...' : 'Create Share Link' }}
               </button>
@@ -365,7 +399,7 @@
 
       </div>
 
-      <div v-if="!isSharePreview" class="sidebar-footer">
+      <div v-if="!isSharePreview && !isMobileViewport" class="sidebar-footer">
         <button
           type="button"
           class="sidebar-link sidebar-link-button"
@@ -395,8 +429,7 @@
     <main
       class="main-content"
       :class="{
-        'main-content--mobile-tabbed': isMobileViewport,
-        'main-content--mobile-visible': !isMobileViewport || activeMobileTab === 'viewer'
+        'main-content--mobile-sheet': isMobileViewport
       }"
     >
       <SpineCanvas
@@ -432,7 +465,116 @@
         @seek="handleSeek"
         @speed-change="handleSpeedChange"
       />
+      <button
+        v-if="isMobileViewport && !isSharePreview"
+        type="button"
+        class="mobile-floating-share"
+        :disabled="!canShare"
+        aria-label="Open share confirmation"
+        @click="openShareConfirm"
+      >
+        Share
+      </button>
     </main>
+
+    <nav v-if="isMobileViewport && !isSharePreview" class="mobile-bottom-nav" role="tablist" aria-label="Mobile controls">
+      <button
+        type="button"
+        class="mobile-nav-btn"
+        :class="{ 'mobile-nav-btn--active': activeMobilePanel === 'load' && mobileSheetState !== 'collapsed' }"
+        role="tab"
+        :aria-selected="activeMobilePanel === 'load' && mobileSheetState !== 'collapsed'"
+        aria-controls="mobile-control-sheet"
+        @click="openMobilePanel('load')"
+      >
+        Files
+      </button>
+      <button
+        type="button"
+        class="mobile-nav-btn"
+        :class="{ 'mobile-nav-btn--active': activeMobilePanel === 'animate' && mobileSheetState !== 'collapsed' }"
+        role="tab"
+        :aria-selected="activeMobilePanel === 'animate' && mobileSheetState !== 'collapsed'"
+        :disabled="!canUseMobileAnimate"
+        aria-controls="mobile-control-sheet"
+        @click="openMobilePanel('animate')"
+      >
+        Animate
+      </button>
+      <button
+        type="button"
+        class="mobile-nav-btn"
+        :class="{ 'mobile-nav-btn--active': activeMobilePanel === 'inspect' && mobileSheetState !== 'collapsed' }"
+        role="tab"
+        :aria-selected="activeMobilePanel === 'inspect' && mobileSheetState !== 'collapsed'"
+        :disabled="!canUseMobileInspect"
+        aria-controls="mobile-control-sheet"
+        @click="openMobilePanel('inspect')"
+      >
+        Inspect
+      </button>
+    </nav>
+
+    <div
+      v-if="isShareConfirmOpen"
+      class="share-confirm-backdrop"
+      @click.self="closeShareConfirm"
+    >
+      <section
+        class="share-confirm-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="share-confirm-title"
+      >
+        <div class="share-confirm-header">
+          <div>
+            <p class="share-confirm-kicker">Share Confirmation</p>
+            <h2 id="share-confirm-title" class="share-confirm-title">Create 24-hour preview link</h2>
+          </div>
+          <button ref="shareConfirmCloseRef" type="button" class="info-modal-close" aria-label="Close share confirmation" @click="closeShareConfirm">×</button>
+        </div>
+        <div class="share-confirm-body">
+          <p class="share-confirm-copy">
+            Spine Viewer will upload the selected asset files to create a temporary preview link. This does not change Google Drive sharing permissions.
+          </p>
+          <div class="share-confirm-section">
+            <div class="share-confirm-section-title">Files to upload</div>
+            <div class="share-confirm-file-list">
+              <div v-for="item in shareUploadFileSummary" :key="item.name" class="share-confirm-file">
+                <span class="share-confirm-file-name">{{ item.name }}</span>
+                <span class="share-confirm-file-meta">{{ item.type }} · {{ item.size }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="share-confirm-section">
+            <div class="share-confirm-section-title">Share settings</div>
+            <div class="share-confirm-detail-row">
+              <span>Expires</span>
+              <strong>{{ shareUploadExpiryPreview }}</strong>
+            </div>
+            <div class="share-confirm-detail-row">
+              <span>Watermark</span>
+              <strong>{{ shareWatermarkEnabled ? 'On, textures exported as WebP with a soft static watermark' : 'Off' }}</strong>
+            </div>
+            <div class="share-confirm-detail-row">
+              <span>Animation content</span>
+              <strong>{{ shareClipCurrentAnimation && sharePrimaryAnimationName ? `Only "${sharePrimaryAnimationName}"` : 'All animations kept' }}</strong>
+            </div>
+            <div class="share-confirm-detail-row">
+              <span>Default preview</span>
+              <strong>{{ shareDefaultsSummary }}</strong>
+            </div>
+          </div>
+          <p v-if="shareError" class="share-confirm-error">{{ shareError }}</p>
+        </div>
+        <div class="share-confirm-actions">
+          <button type="button" class="share-secondary-btn" :disabled="isSharing" @click="closeShareConfirm">Cancel</button>
+          <button type="button" class="share-primary-btn" :disabled="!canShare || isSharing" @click="executeCreateShare">
+            {{ isSharing ? 'Creating...' : 'Create Share Link' }}
+          </button>
+        </div>
+      </section>
+    </div>
 
     <div
       v-if="isInfoOpen"
@@ -473,7 +615,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import packageJson from '../package.json'
 import ControlPanel from './components/ControlPanel.vue'
 import LoadFilesPanel from './components/LoadFilesPanel.vue'
@@ -508,7 +650,11 @@ const isInspectPanelOpen = ref(true)
 const isSharePanelOpen = ref(false)
 const isInfoOpen = ref(false)
 const isMobileViewport = ref(false)
-const activeMobileTab = ref<'viewer' | 'controls'>('viewer')
+const activeMobilePanel = ref<'load' | 'animate' | 'inspect'>('load')
+const mobileSheetState = ref<'collapsed' | 'half' | 'full'>('half')
+const isShareConfirmOpen = ref(false)
+const shareConfirmCloseRef = ref<HTMLButtonElement | null>(null)
+const isMobileMoreOpen = ref(false)
 
 const animations = ref<string[]>([])
 const skins = ref<string[]>([])
@@ -576,6 +722,8 @@ const hasInspectPanel = computed(() => {
     || runtimeVersion.value !== null
 })
 const canShare = computed(() => sourceFiles.value.length > 0 && animations.value.length > 0)  
+const canUseMobileAnimate = computed(() => animations.value.length > 0)
+const canUseMobileInspect = computed(() => hasInspectPanel.value)
 const canShareWebm = computed(() => {
   return sourceFiles.value.length > 0
     && !!observedAnimationName.value
@@ -592,6 +740,26 @@ const shareStatusText = computed(() => {
   } 
   return '' 
 }) 
+const formatFileSize = (bytes: number) => {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round((bytes / 1024) * 10) / 10} KB`
+  return `${Math.round((bytes / (1024 * 1024)) * 10) / 10} MB`
+}
+const getShareFileTypeLabel = (file: File) => {
+  if (/\.json$/i.test(file.name)) return 'Skeleton JSON'
+  if (/\.atlas$/i.test(file.name)) return 'Atlas'
+  if (/\.png$/i.test(file.name)) return 'Texture'
+  return 'File'
+}
+const shareUploadFileSummary = computed(() => sourceFiles.value.map(file => ({
+  name: file.name,
+  type: getShareFileTypeLabel(file),
+  size: formatFileSize(file.size)
+})))
+const shareUploadExpiryPreview = computed(() => {
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
+  return formatShareDate(expiresAt.toISOString())
+})
 const sortShareHistory = (entries: ShareHistoryEntry[]) => { 
   return [...entries].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)) 
 } 
@@ -697,12 +865,21 @@ const markShareHistoryRevoked = (token: string, revokedAt: string) => {
         ? { ...item, revokedAt, revoking: false }
         : item
     ))
-    .filter(item => !item.revokedAt)
   persistShareHistory() 
   scheduleShareHistoryPrune()
 } 
 
 const deleteShareHistory = (token: string) => {
+  const currentItem = shareHistory.value.find(item => item.token === token)
+  const confirmed = window.confirm(
+    [
+      'Delete this local share history entry?',
+      '',
+      currentItem ? currentItem.skeletonName : 'This only removes the saved history item from this browser.',
+      'It does not revoke a public share link. Use Revoke for active links.'
+    ].join('\n')
+  )
+  if (!confirmed) return
   shareHistory.value = shareHistory.value.filter(item => item.token !== token)
   persistShareHistory()
   scheduleShareHistoryPrune()
@@ -796,7 +973,7 @@ const shareWebmSummary = computed(() => {
 
   const seconds = duration.value / Math.max(playbackRate.value || 1, 0.01)
   const roundedSeconds = Math.round(seconds * 10) / 10
-  return `Clip: ${observedAnimationName.value} ??Length: ${roundedSeconds}s ??Track: ${overlayTrackIndex.value}`
+  return `Clip: ${observedAnimationName.value} · Length: ${roundedSeconds}s · Track: ${overlayTrackIndex.value}`
 })
 const overlayTrackOptions = computed(() => {
   const indices = new Set<number>()
@@ -827,28 +1004,88 @@ let runtimeNotificationId = 0
 const runtimeNotificationTimers = new Map<number, number>()
 
 const updateViewportState = () => {
-  const nextIsMobileViewport = window.innerWidth <= 640
+  const nextIsMobileViewport = window.innerWidth <= 640 || (window.innerWidth <= 900 && window.innerHeight <= 480)
   if (nextIsMobileViewport !== isMobileViewport.value) {
     isMobileViewport.value = nextIsMobileViewport
     if (!nextIsMobileViewport) {
-      activeMobileTab.value = 'viewer'
+      mobileSheetState.value = 'half'
+    } else {
+      mobileSheetState.value = 'half'
     }
   }
 }
 
 const handleWindowKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
-    isInfoOpen.value = false
-    if (isMobileViewport.value && activeMobileTab.value === 'controls') {
-      activeMobileTab.value = 'viewer'
+    if (isShareConfirmOpen.value) {
+      closeShareConfirm()
+      return
+    }
+    if (isInfoOpen.value) {
+      isInfoOpen.value = false
+      return
+    }
+    if (isMobileViewport.value && mobileSheetState.value !== 'collapsed') {
+      mobileSheetState.value = 'collapsed'
     }
   }
 }
 
-const setActiveMobileTab = (tab: 'viewer' | 'controls') => {
+const setMobileSheetState = (state: 'collapsed' | 'half' | 'full') => {
   if (!isMobileViewport.value) return
-  activeMobileTab.value = tab
+  mobileSheetState.value = state
+  if (state === 'collapsed') {
+    isMobileMoreOpen.value = false
+  }
 }
+
+const openMobilePanel = (panel: 'load' | 'animate' | 'inspect') => {
+  if (!isMobileViewport.value) return
+  if (panel === 'animate' && !canUseMobileAnimate.value) return
+  if (panel === 'inspect' && !canUseMobileInspect.value) return
+  activeMobilePanel.value = panel
+  if (mobileSheetState.value === 'collapsed') {
+    mobileSheetState.value = 'half'
+  }
+}
+
+const toggleMobileSheetSize = () => {
+  if (!isMobileViewport.value) return
+  mobileSheetState.value = mobileSheetState.value === 'full' ? 'half' : 'full'
+  isMobileMoreOpen.value = false
+}
+
+const openShareConfirm = () => {
+  if (!canShare.value) return
+  shareError.value = ''
+  isShareConfirmOpen.value = true
+}
+
+const closeShareConfirm = () => {
+  if (isSharing.value) return
+  isShareConfirmOpen.value = false
+}
+
+const openInfoFromMobileMore = () => {
+  isMobileMoreOpen.value = false
+  isInfoOpen.value = true
+}
+
+watch(isShareConfirmOpen, async (isOpen) => {
+  if (!isOpen) return
+  await nextTick()
+  shareConfirmCloseRef.value?.focus()
+})
+
+watch([canUseMobileAnimate, canUseMobileInspect], ([canAnimate, canInspect]) => {
+  if (!isMobileViewport.value) return
+  if (activeMobilePanel.value === 'animate' && !canAnimate) {
+    activeMobilePanel.value = 'load'
+  }
+  if (activeMobilePanel.value === 'inspect' && !canInspect) {
+    activeMobilePanel.value = 'load'
+  }
+})
 
 const applyTheme = (dark: boolean) => {
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
@@ -900,7 +1137,7 @@ const loadSharedSession = async (token: string) => {
       ...sharedFiles.textureFiles
     ]
     isLoadFilesPanelOpen.value = false
-    activeMobileTab.value = 'viewer'
+    mobileSheetState.value = 'collapsed'
   } catch (error) { 
     shareManifest.value = null 
     shareError.value = error instanceof Error ? normalizeShareErrorMessage(error.message) : 'Failed to load shared assets' 
@@ -914,7 +1151,7 @@ const handleExitSharePreview = () => {
   shareExpiresAt.value = ''
   shareError.value = ''
   sourceFiles.value = []
-  activeMobileTab.value = 'viewer'
+  mobileSheetState.value = 'half'
   resetViewerState()
   window.history.replaceState({}, '', '/')
 }
@@ -954,7 +1191,7 @@ const handleFileSelected = (payload: { files: File[] }) => {
   shareExpiresAt.value = ''
   shareError.value = ''
   resetViewerState()
-  activeMobileTab.value = 'viewer'
+  mobileSheetState.value = isMobileViewport.value ? 'half' : mobileSheetState.value
 }
 
 const clearRuntimeNotifications = () => {
@@ -1258,18 +1495,31 @@ const handleError = (error: string) => {
   console.error('Spine Canvas Error:', error)
 }
 
-const handleCreateShare = async () => {
-  if (!canShare.value || isSharing.value) return
+const classifyShareCreateError = (error: unknown) => {
+  const rawMessage = error instanceof Error ? error.message : 'Failed to create share link'
+  const normalized = normalizeShareErrorMessage(rawMessage)
+  const lower = normalized.toLowerCase()
 
-  const confirmed = window.confirm(
-    [
-      'Create a share link?',
-      '',
-      'This will upload the selected Spine asset files to Spine Viewer storage to create a 24-hour preview link.',
-      'It will not modify your Google Drive files or change Google Drive sharing permissions.'
-    ].join('\n')
-  )
-  if (!confirmed) return
+  if (lower.includes('network') || lower.includes('fetch')) {
+    return `Network error: ${normalized}`
+  }
+  if (lower.includes('texture') || lower.includes('canvas') || lower.includes('webp')) {
+    return `File processing error: ${normalized}`
+  }
+  if (lower.includes('upload') || lower.includes('storage')) {
+    return `Upload error: ${normalized}`
+  }
+  if (lower.includes('expired')) {
+    return `Expired link: ${normalized}`
+  }
+  if (lower.includes('revoked')) {
+    return `Revoked link: ${normalized}`
+  }
+  return normalized
+}
+
+const executeCreateShare = async () => {
+  if (!canShare.value || isSharing.value) return
 
   shareError.value = ''
   shareUrl.value = ''
@@ -1300,9 +1550,14 @@ const handleCreateShare = async () => {
     })
     shareUrl.value = result.shareUrl 
     shareExpiresAt.value = result.expiresAt 
-    await navigator.clipboard?.writeText(result.shareUrl) 
+    isShareConfirmOpen.value = false
+    try {
+      await navigator.clipboard?.writeText(result.shareUrl)
+    } catch {
+      // The visible link remains available if clipboard access is denied.
+    }
   } catch (error) { 
-    shareError.value = error instanceof Error ? error.message : 'Failed to create share link' 
+    shareError.value = classifyShareCreateError(error) 
   } finally { 
     isSharing.value = false 
   } 
@@ -1352,6 +1607,16 @@ const handleShareWebm = async () => {
 const handleRevokeShare = async (token: string) => { 
   const currentItem = shareHistory.value.find(item => item.token === token) 
   if (!currentItem || getShareHistoryStatus(currentItem) !== 'active') return
+
+  const confirmed = window.confirm(
+    [
+      'Revoke this public share link?',
+      '',
+      currentItem.skeletonName,
+      'People with the link will no longer be able to open this preview. This is different from deleting local history.'
+    ].join('\n')
+  )
+  if (!confirmed) return
 
   shareHistory.value = shareHistory.value.map(item => (
     item.token === token
@@ -1415,8 +1680,9 @@ const handleRevokeShare = async (token: string) => {
   --radius-md: 8px;
   --radius-lg: 14px;
   --transition: 0.15s ease;
-  --mobile-bottom-nav-height: 76px;
-  --mobile-bottom-nav-gap: 12px;
+  --mobile-bottom-nav-height: 64px;
+  --mobile-bottom-nav-gap: 10px;
+  --mobile-bottom-nav-bottom: max(12px, env(safe-area-inset-bottom));
 }
 
 :root[data-theme="light"] {
@@ -1463,59 +1729,21 @@ html, body, #app {
   font-family: var(--font-ui);
 }
 
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
 .spine-viewer {
   display: flex;
   position: relative;
   width: 100%;
   height: 100%;
+  min-height: 100dvh;
   background: var(--bg-base);
   color: var(--text-primary);
-}
-
-.mobile-tab-bar {
-  display: none;
-}
-
-.mobile-tab-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.mobile-tab-btn {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-height: 34px;
-  padding: 0 14px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: color var(--transition), border-color var(--transition), background var(--transition);
-}
-
-.mobile-tab-btn--active {
-  border-color: var(--border-glow);
-  background: var(--accent-dim);
-  color: var(--accent);
-}
-
-.mobile-tab-icon {
-  display: block;
-  flex-shrink: 0;
-}
-
-.mobile-theme-toggle {
-  flex-shrink: 0;
 }
 
 .sidebar {
@@ -2170,6 +2398,139 @@ html, body, #app {
   background: #000;
 }
 
+.mobile-bottom-nav,
+.mobile-floating-share {
+  display: none;
+}
+
+.share-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(7, 6, 5, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.share-confirm-modal {
+  width: min(100%, 560px);
+  max-height: min(720px, calc(100dvh - 40px));
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-panel);
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.share-confirm-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.share-confirm-kicker {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.share-confirm-title {
+  margin-top: 6px;
+  font-size: 20px;
+  color: var(--text-primary);
+}
+
+.share-confirm-body {
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.share-confirm-copy {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+.share-confirm-section {
+  display: grid;
+  gap: 8px;
+}
+
+.share-confirm-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.share-confirm-file-list {
+  display: grid;
+  gap: 7px;
+}
+
+.share-confirm-file,
+.share-confirm-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+}
+
+.share-confirm-file-name,
+.share-confirm-detail-row strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.share-confirm-file-meta,
+.share-confirm-detail-row span {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.share-confirm-error {
+  padding: 10px;
+  border: 1px solid rgba(196, 107, 90, 0.28);
+  border-radius: var(--radius-md);
+  background: rgba(196, 107, 90, 0.08);
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.share-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 18px 18px;
+  border-top: 1px solid var(--border);
+}
+
 .info-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -2252,61 +2613,132 @@ html, body, #app {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 640px), (max-width: 900px) and (max-height: 480px) {
   .spine-viewer {
     flex-direction: column;
-  }
-
-  .mobile-tab-bar {
-    display: flex;
-    position: absolute;
-    left: 12px;
-    right: 12px;
-    bottom: max(12px, env(safe-area-inset-bottom));
-    z-index: 30;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 8px;
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
-    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.28);
-    backdrop-filter: blur(16px);
-    flex-shrink: 0;
-  }
-
-  .mobile-tab-group {
-    flex: 1;
-    gap: 4px;
-  }
-
-  .mobile-tab-btn {
-    flex: 1;
-    min-height: 52px;
-    padding: 6px 10px 5px;
-    border-radius: 16px;
-    font-size: 9px;
-    letter-spacing: 0.1em;
+    min-height: 100dvh;
   }
 
   .sidebar {
-    width: 100%;
+    width: auto;
     min-width: 0;
-    height: auto;
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-    display: none;
-    flex: 1;
-    min-height: 0;
   }
 
-  .sidebar--mobile-visible {
-    display: flex;
+  .sidebar--mobile-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--mobile-bottom-nav-height) + var(--mobile-bottom-nav-gap) + var(--mobile-bottom-nav-bottom));
+    z-index: 28;
+    height: min(58dvh, 520px);
+    border-right: 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 0;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.42);
+    transition: height var(--transition), transform var(--transition);
+  }
+
+  .sidebar--mobile-full {
+    height: calc(100dvh - var(--mobile-bottom-nav-height) - var(--mobile-bottom-nav-gap) - var(--mobile-bottom-nav-bottom));
+  }
+
+  .sidebar--mobile-collapsed {
+    transform: translateY(calc(100% + var(--mobile-bottom-nav-height)));
+    pointer-events: none;
+  }
+
+  .sidebar--mobile-panel-load .sidebar-panel:not(.sidebar-panel--load),
+  .sidebar--mobile-panel-animate .sidebar-panel:not(.sidebar-panel--animate),
+  .sidebar--mobile-panel-inspect .sidebar-panel:not(.sidebar-panel--inspect) {
+    display: none;
+  }
+
+  .sidebar--mobile-sheet .sidebar-panel--share {
+    display: none;
   }
 
   .sidebar-brand {
-    padding: 14px 14px 12px;
+    position: relative;
+    padding: 18px 14px 12px;
+  }
+
+  .mobile-sheet-grabber {
+    position: absolute;
+    top: 7px;
+    left: 50%;
+    width: 42px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--border);
+    transform: translateX(-50%);
+  }
+
+  .mobile-sheet-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .mobile-more-wrap {
+    position: relative;
+  }
+
+  .mobile-sheet-icon-btn {
+    min-height: 34px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    cursor: pointer;
+  }
+
+  .mobile-sheet-icon-btn {
+    width: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-more-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 36;
+    width: 180px;
+    display: grid;
+    gap: 4px;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-panel);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.36);
+  }
+
+  .mobile-more-item {
+    display: flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-ui);
+    font-size: 12px;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .mobile-more-item:hover,
+  .mobile-more-item:focus-visible {
+    outline: none;
+    background: var(--accent-dim);
+    color: var(--accent);
   }
 
   .brand-spine {
@@ -2336,18 +2768,103 @@ html, body, #app {
   }
 
   .main-content {
-    display: none;
+    display: flex;
     flex: 1;
     min-height: 0;
-    padding-bottom: calc(var(--mobile-bottom-nav-height) + var(--mobile-bottom-nav-gap) + env(safe-area-inset-bottom));
+    padding-bottom: calc(var(--mobile-bottom-nav-height) + var(--mobile-bottom-nav-gap) + var(--mobile-bottom-nav-bottom));
   }
 
-  .main-content--mobile-visible {
-    display: flex;
+  .mobile-bottom-nav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: var(--mobile-bottom-nav-bottom);
+    z-index: 32;
+    gap: 6px;
+    min-height: var(--mobile-bottom-nav-height);
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--bg-panel) 92%, transparent);
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(16px);
   }
 
-  .sidebar--mobile-tabbed {
-    padding-bottom: calc(var(--mobile-bottom-nav-height) + var(--mobile-bottom-nav-gap) + env(safe-area-inset-bottom));
+  .mobile-nav-btn {
+    position: relative;
+    isolation: isolate;
+    min-height: 46px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: color var(--transition), background-color var(--transition), border-color var(--transition), box-shadow var(--transition);
+  }
+
+  .mobile-nav-btn--active::before {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    box-sizing: border-box;
+    border: 1px solid var(--border-glow);
+    border-radius: inherit;
+    background: color-mix(in srgb, var(--accent-dim) 86%, var(--bg-raised));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent);
+    content: '';
+  }
+
+  .mobile-nav-btn--active {
+    color: var(--accent);
+  }
+
+  .mobile-nav-btn:not(:disabled):active::before {
+    background: color-mix(in srgb, var(--accent-dim) 72%, var(--bg-raised));
+  }
+
+  .mobile-nav-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -3px;
+  }
+
+  .mobile-nav-btn:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+  }
+
+  .mobile-floating-share {
+    display: inline-flex;
+    position: absolute;
+    top: max(12px, env(safe-area-inset-top));
+    left: 12px;
+    z-index: 20;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--border-glow);
+    border-radius: 999px;
+    background: var(--bg-overlay);
+    color: var(--accent);
+    font-family: var(--font-ui);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    backdrop-filter: blur(14px);
+  }
+
+  .mobile-floating-share:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   .sidebar--share-preview .sidebar-brand {
@@ -2378,6 +2895,35 @@ html, body, #app {
 
   .sidebar--share-preview .share-preview-copy {
     font-size: 11px;
+  }
+
+  .share-confirm-backdrop {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .share-confirm-modal {
+    width: 100%;
+    max-height: none;
+    min-height: 100dvh;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+  }
+
+  .share-confirm-header {
+    padding-top: max(18px, env(safe-area-inset-top));
+  }
+
+  .share-confirm-actions {
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+
+  .share-confirm-actions .share-secondary-btn,
+  .share-confirm-actions .share-primary-btn {
+    min-height: 44px;
+    flex: 1;
   }
 }
 </style>
