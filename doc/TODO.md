@@ -61,8 +61,8 @@
 
 ### P1 - 高優先
 
-- [ ] 桌機 sidebar 重新分層，不要 `Load / Animate / Inspect` 全部同時攤開。
-- [ ] 桌機 playback 改成底部 dock，可收合，不遮住 Canvas 關鍵區域。
+- [x] 桌機 sidebar 重新分層，不要 `Load / Animate / Inspect` 全部同時攤開。
+- [x] 桌機 playback 改成底部 dock，可收合，不遮住 Canvas 關鍵區域。
 - [ ] Share 從 sidebar accordion 移出，改成 modal / wizard。
 - [ ] Share 流程分步：檢查 asset -> 設定選項 -> 確認上傳 -> 建立連結 -> 複製/開啟。
 - [ ] Share 成功後提供明確成功狀態與 copy button。
@@ -70,7 +70,7 @@
 - [ ] Skeleton tree 的展開與選取互動分離。
 - [ ] 長 animation / bone / slot / attachment 名稱可完整查看。
 - [ ] 選中的 bone / slot 在 Canvas 上有更明顯回饋。
-- [ ] 播放列顯示目前 animation name。
+- [x] 播放列顯示目前 animation name。
 - [ ] Runtime fallback / version 狀態改成清楚提示。
 - [ ] 空狀態加強說明：用 `Files / Folder / Drive` 載入 Spine asset。
 - [ ] 統一 UI 語言策略：全繁中或全英文。

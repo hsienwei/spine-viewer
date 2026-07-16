@@ -105,7 +105,7 @@
             type="button"
             class="sidebar-panel-header"
             :aria-expanded="isLoadFilesPanelOpen"
-            @click="isLoadFilesPanelOpen = !isLoadFilesPanelOpen"
+            @click="toggleSidebarPanel('load')"
           >
             <span>Load</span>
             <svg class="panel-chevron" :class="{ open: isLoadFilesPanelOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -124,7 +124,7 @@
             type="button"
             class="sidebar-panel-header"
             :aria-expanded="isAnimatePanelOpen"
-            @click="isAnimatePanelOpen = !isAnimatePanelOpen"
+            @click="toggleSidebarPanel('animate')"
           >
             <span>Animate</span>
             <svg class="panel-chevron" :class="{ open: isAnimatePanelOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -147,7 +147,7 @@
             type="button"
             class="sidebar-panel-header"
             :aria-expanded="isInspectPanelOpen"
-            @click="isInspectPanelOpen = !isInspectPanelOpen"
+            @click="toggleSidebarPanel('inspect')"
           >
             <span>Inspect</span>
             <svg class="panel-chevron" :class="{ open: isInspectPanelOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -1039,6 +1039,25 @@ const setMobileSheetState = (state: 'collapsed' | 'half' | 'full') => {
   }
 }
 
+const toggleSidebarPanel = (panel: 'load' | 'animate' | 'inspect') => {
+  if (isMobileViewport.value) {
+    if (panel === 'load') isLoadFilesPanelOpen.value = !isLoadFilesPanelOpen.value
+    if (panel === 'animate') isAnimatePanelOpen.value = !isAnimatePanelOpen.value
+    if (panel === 'inspect') isInspectPanelOpen.value = !isInspectPanelOpen.value
+    return
+  }
+
+  const shouldOpen = panel === 'load'
+    ? !isLoadFilesPanelOpen.value
+    : panel === 'animate'
+      ? !isAnimatePanelOpen.value
+      : !isInspectPanelOpen.value
+
+  isLoadFilesPanelOpen.value = panel === 'load' && shouldOpen
+  isAnimatePanelOpen.value = panel === 'animate' && shouldOpen
+  isInspectPanelOpen.value = panel === 'inspect' && shouldOpen
+}
+
 const openMobilePanel = (panel: 'load' | 'animate' | 'inspect') => {
   if (!isMobileViewport.value) return
   if (panel === 'animate' && !canUseMobileAnimate.value) return
@@ -1191,6 +1210,11 @@ const handleFileSelected = (payload: { files: File[] }) => {
   shareExpiresAt.value = ''
   shareError.value = ''
   resetViewerState()
+  if (!isMobileViewport.value) {
+    isLoadFilesPanelOpen.value = true
+    isAnimatePanelOpen.value = false
+    isInspectPanelOpen.value = false
+  }
   mobileSheetState.value = isMobileViewport.value ? 'half' : mobileSheetState.value
 }
 
@@ -1353,6 +1377,11 @@ const handleLoaded = (data: {
   initialRuntimeVersion.value = data.initialRuntimeVersion
   runtimeVersion.value = data.runtimeVersion
   fallbackUsed.value = data.fallbackUsed
+  if (!isMobileViewport.value) {
+    isLoadFilesPanelOpen.value = false
+    isAnimatePanelOpen.value = data.animations.length > 0
+    isInspectPanelOpen.value = data.animations.length === 0
+  }
 }
 
 const handleTimeUpdate = (state: {

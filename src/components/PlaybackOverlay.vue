@@ -1,6 +1,23 @@
 <template>
-  <section v-if="visible" class="playback-overlay">
-    <div v-if="trackOptions.length > 1" class="track-selector-row">
+  <section v-if="visible" class="playback-overlay" :class="{ 'playback-overlay--collapsed': isCollapsed }">
+    <div class="playback-dock-header">
+      <span class="playback-dock-title" :title="animationName || 'Playback'">{{ animationName || 'Playback' }}</span>
+      <button
+        type="button"
+        class="playback-dock-toggle"
+        :aria-label="isCollapsed ? 'Expand playback controls' : 'Collapse playback controls'"
+        @click="isCollapsed = !isCollapsed"
+      >
+        <svg v-if="isCollapsed" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M3 8.5l4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <svg v-else width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M3 5.5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+    <div v-show="!isCollapsed" class="playback-dock-content">
+      <div v-if="trackOptions.length > 1" class="track-selector-row">
       <span class="track-selector-label">Track</span>
       <div class="track-selector-wrapper">
         <select
@@ -102,6 +119,7 @@
         />
       </div>
     </div>
+    </div>
   </section>
 </template>
 
@@ -142,6 +160,8 @@ const props = defineProps<{
   eventMarkers?: SpineAnimationEventMarker[]
   runtimeNotifications?: RuntimeNotificationInput[]
 }>()
+
+const isCollapsed = ref(false)
 
 const emit = defineEmits<{
   'track-change': [trackIndex: number]
@@ -358,19 +378,72 @@ onUnmounted(() => {
 <style scoped>
 .playback-overlay {
   position: absolute;
-  right: 20px;
-  bottom: 20px;
-  width: min(380px, calc(100% - 24px));
+  left: 50%;
+  bottom: 16px;
+  width: min(680px, calc(100% - 48px));
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 14px 16px;
+  gap: 10px;
+  padding: 10px 14px;
   border: 1px solid var(--border-glow);
   border-radius: var(--radius-lg);
   background: var(--bg-overlay);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(201, 141, 42, 0.08);
   backdrop-filter: blur(16px);
+  transform: translateX(-50%);
   z-index: 2;
+}
+
+.playback-overlay--collapsed {
+  width: min(360px, calc(100% - 48px));
+}
+
+.playback-dock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.playback-dock-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playback-dock-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.playback-dock-toggle:hover,
+.playback-dock-toggle:focus-visible {
+  outline: none;
+  border-color: var(--border-glow);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.playback-dock-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .track-selector-row {
@@ -719,9 +792,11 @@ onUnmounted(() => {
 
 @media (max-width: 900px) {
   .playback-overlay {
+    left: auto;
     right: 14px;
     bottom: 14px;
     width: min(420px, calc(100% - 20px));
+    transform: none;
   }
 }
 
@@ -729,10 +804,15 @@ onUnmounted(() => {
   .playback-overlay {
     left: 10px;
     right: 10px;
-    bottom: calc(var(--mobile-bottom-nav-height, 76px) + var(--mobile-bottom-nav-gap, 12px) + env(safe-area-inset-bottom));
+    bottom: calc(
+      var(--mobile-bottom-nav-height, 64px)
+      + var(--mobile-bottom-nav-gap, 10px)
+      + var(--mobile-bottom-nav-bottom, max(12px, env(safe-area-inset-bottom)))
+    );
     width: auto;
     gap: 12px;
     padding: 12px 12px 14px;
+    transform: none;
   }
 
   .track-selector-row {
