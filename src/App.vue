@@ -448,6 +448,7 @@
         @time-update="(state) => handleTimeUpdate(state)" 
         @runtime-event="(payload) => handleRuntimeEvent(payload)" 
         @error="(err) => handleError(err)" 
+        @canvas-tap="handleCanvasTap"
       />
       <PlaybackOverlay
         :visible="animations.length > 0"
@@ -1066,6 +1067,11 @@ const openMobilePanel = (panel: 'load' | 'animate' | 'inspect') => {
   if (mobileSheetState.value === 'collapsed') {
     mobileSheetState.value = 'half'
   }
+}
+
+const handleCanvasTap = () => {
+  if (!isMobileViewport.value || mobileSheetState.value === 'collapsed') return
+  setMobileSheetState('collapsed')
 }
 
 const toggleMobileSheetSize = () => {
@@ -1970,6 +1976,7 @@ select {
   color: var(--text-primary);
   background: rgba(255, 255, 255, 0.02);
 }
+
 
 .sidebar-panel-header--static {
   cursor: default;
@@ -2953,6 +2960,20 @@ select {
   .share-confirm-actions .share-primary-btn {
     min-height: 44px;
     flex: 1;
+  }
+
+  .share-confirm-detail-row {
+    align-items: flex-start;
+  }
+
+  .share-confirm-detail-row strong,
+  .share-confirm-file-name {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .share-confirm-detail-row strong {
+    text-align: right;
   }
 }
 </style>

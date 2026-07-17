@@ -79,6 +79,7 @@ const emit = defineEmits<{
     tracks: SpineTrackPlaybackState[]
   }): void
   (e: 'runtimeEvent', payload: SpineAnimationEventPayload): void
+  (e: 'canvas-tap'): void
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -101,6 +102,8 @@ let resizeObserver: ResizeObserver | null = null
 const activePointers = new Map<number, { x: number; y: number }>()
 let pinchDistance: number | null = null
 let isTouchGestureActive = false
+let touchStartPosition: { x: number; y: number } | null = null
+let didTouchMove = false
 
 const runtimeAdapters = {
   3: new Spine3RuntimeAdapter(),
@@ -566,6 +569,7 @@ const handleTouchStart = (event: TouchEvent) => {
   isTouchGestureActive = true
 
   if (event.touches.length >= 2) {
+    didTouchMove = true
     isPanning.value = false
     activePointerId = null
     pinchDistance = getTouchMetrics(event.touches)?.distance ?? null
@@ -574,6 +578,8 @@ const handleTouchStart = (event: TouchEvent) => {
 
   if (event.touches.length === 1) {
     const touch = event.touches[0]
+    touchStartPosition = { x: touch.clientX, y: touch.clientY }
+    didTouchMove = false
     lastPointerPosition = { x: touch.clientX, y: touch.clientY }
     isPanning.value = true
     pinchDistance = null
@@ -604,6 +610,9 @@ const handleTouchMove = (event: TouchEvent) => {
   if (event.touches.length !== 1 || !isPanning.value) return
 
   const touch = event.touches[0]
+  if (touchStartPosition && Math.hypot(touch.clientX - touchStartPosition.x, touch.clientY - touchStartPosition.y) > 8) {
+    didTouchMove = true
+  }
   const previousPoint = getCanvasScreenPoint(lastPointerPosition.x, lastPointerPosition.y)
   const currentPoint = getCanvasScreenPoint(touch.clientX, touch.clientY)
 
@@ -642,6 +651,9 @@ const handleTouchEnd = (event: TouchEvent) => {
   isTouchGestureActive = false
   pinchDistance = null
   isPanning.value = false
+  if (!didTouchMove) emit('canvas-tap')
+  touchStartPosition = null
+  didTouchMove = false
 }
 
 defineExpose({
