@@ -400,11 +400,21 @@ export class Spine3RuntimeAdapter implements SpineRuntimeAdapter {
               accentColor, accentColor
             )
           }
+
+          const boneLength = selectedBone.data?.length || 0
+          if (boneLength > 0 && Number.isFinite(selectedBone.a) && Number.isFinite(selectedBone.b)) {
+            const endX = selectedBone.worldX + selectedBone.a * boneLength
+            const endY = selectedBone.worldY + selectedBone.b * boneLength
+            renderer.line(selectedBone.worldX, selectedBone.worldY, endX, endY, accentColor, accentColor)
+            renderer.circle(false, endX, endY, 5, accentColor, 18)
+          }
+
           renderer.circle(false, selectedBone.worldX, selectedBone.worldY, 10, accentColor, 24)
           renderer.circle(true, selectedBone.worldX, selectedBone.worldY, 3.5, accentColor, 16)
         }
 
         if (slotBone) {
+          drawAttachmentOutline(selectedSlot, secondaryColor)
           renderer.circle(false, slotBone.worldX, slotBone.worldY, 16, secondaryColor, 24)
           renderer.circle(false, slotBone.worldX, slotBone.worldY, 8, secondaryColor, 24)
           renderer.line(
@@ -417,6 +427,28 @@ export class Spine3RuntimeAdapter implements SpineRuntimeAdapter {
             slotBone.worldX, slotBone.worldY + 12,
             secondaryColor, secondaryColor
           )
+        }
+      }
+
+      const drawAttachmentOutline = (slot: any, color: any) => {
+        const attachment = slot?.attachment
+        const vertexCount = Number(attachment?.worldVerticesLength) || 0
+        if (!attachment || !slot?.bone || vertexCount < 4 || vertexCount > 512 || typeof attachment.computeWorldVertices !== 'function') return
+
+        const vertices = new Float32Array(vertexCount)
+        try {
+          attachment.computeWorldVertices(slot, 0, vertexCount, vertices, 0, 2)
+        } catch {
+          try {
+            attachment.computeWorldVertices(slot.bone, vertices, 0, 2)
+          } catch {
+            return
+          }
+        }
+
+        for (let index = 0; index < vertices.length; index += 2) {
+          const nextIndex = (index + 2) % vertices.length
+          renderer.line(vertices[index], vertices[index + 1], vertices[nextIndex], vertices[nextIndex + 1], color, color)
         }
       }
 

@@ -67,9 +67,9 @@
 - [ ] Share 流程分步：檢查 asset -> 設定選項 -> 確認上傳 -> 建立連結 -> 複製/開啟。
 - [ ] Share 成功後提供明確成功狀態與 copy button。
 - [ ] Skeleton tree 加搜尋。
-- [ ] Skeleton tree 的展開與選取互動分離。
-- [ ] 長 animation / bone / slot / attachment 名稱可完整查看。
-- [ ] 選中的 bone / slot 在 Canvas 上有更明顯回饋。
+- [x] Skeleton tree 的展開與選取互動分離。
+- [x] 長 animation / bone / slot / attachment 名稱可完整查看。
+- [x] 選中的 bone / slot 在 Canvas 上有更明顯回饋。
 - [x] 播放列顯示目前 animation name。
 - [ ] Runtime fallback / version 狀態改成清楚提示。
 - [ ] 空狀態加強說明：用 `Files / Folder / Drive` 載入 Spine asset。
@@ -90,14 +90,14 @@
 - [ ] Skeleton tree 加 expand / collapse all。
 - [ ] Share history 移到獨立管理區。
 - [ ] Timeline 支援鍵盤 seek。
-- [ ] Slider 補 `aria-valuetext`。
+- [x] Slider 補 `aria-valuetext`。
 - [ ] Timeline marker tooltip 做得更完整。
 - [ ] Event marker 若常用於除錯，加入更清楚的事件提示與定位。
 
 ### P3 - 後續精修
 
 - [ ] Draw calls / event markers 做成更清楚的視覺 metrics。
-- [ ] Info / Privacy / Terms 收進更多選單。
+- [x] Info / Privacy / Terms 收進更多選單。
 - [ ] 減少 uppercase + letter-spacing 的使用頻率。
 - [ ] Share history 加進階篩選、搜尋或批次清理。
 - [ ] 更細緻的 light / dark theme 視覺微調。
