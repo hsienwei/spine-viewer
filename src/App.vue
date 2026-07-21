@@ -20,12 +20,12 @@
           </div>
           <span class="brand-version">v{{ appVersion }}</span>
         </div>
-        <div v-if="isMobileViewport" class="mobile-sheet-actions" aria-label="Sheet size controls">
+        <div v-if="isMobileViewport" class="mobile-sheet-actions" :aria-label="ui.app.sheetControls">
           <div class="mobile-more-wrap">
             <button
               type="button"
               class="mobile-sheet-icon-btn"
-              aria-label="More information links"
+              :aria-label="ui.app.moreLinks"
               :aria-expanded="isMobileMoreOpen"
               @click="isMobileMoreOpen = !isMobileMoreOpen"
             >
@@ -66,7 +66,7 @@
           <button
             type="button"
             class="mobile-sheet-icon-btn"
-            :aria-label="mobileSheetState === 'full' ? 'Set controls sheet to half height' : 'Expand controls sheet'"
+            :aria-label="mobileSheetState === 'full' ? ui.app.setSheetHalf : ui.app.expandSheet"
             @click="toggleMobileSheetSize"
           >
             <svg v-if="mobileSheetState === 'full'" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -76,7 +76,7 @@
               <path d="M4 10l4-4 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
-          <button type="button" class="mobile-sheet-icon-btn" aria-label="Collapse controls sheet" @click="setMobileSheetState('collapsed')">
+          <button type="button" class="mobile-sheet-icon-btn" :aria-label="ui.app.collapseSheet" @click="setMobileSheetState('collapsed')">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
             </svg>
@@ -185,7 +185,7 @@
 
         <div v-if="isSharePreview && shareManifest" class="sidebar-panel">
           <div class="sidebar-panel-header sidebar-panel-header--static">
-            <span>Shared Preview</span>
+            <span>{{ ui.app.sharedPreview }}</span>
           </div>
           <div class="sidebar-panel-body">
             <div class="share-preview-summary">
@@ -250,7 +250,7 @@
             :aria-expanded="isSharePanelOpen"
             @click="isSharePanelOpen = !isSharePanelOpen"
           >
-            <span>Share</span>
+            <span>{{ ui.app.share }}</span>
             <svg class="panel-chevron" :class="{ open: isSharePanelOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -259,7 +259,7 @@
             <div class="share-panel-body">
               <div class="share-export-card">
                 <div class="share-export-copy">
-                  <span class="share-export-title">WebM Clip</span>
+                  <span class="share-export-title">{{ ui.app.webmClip }}</span>
                   <span class="share-export-hint">{{ shareWebmSummary }}</span>
                 </div>
                 <button
@@ -268,21 +268,21 @@
                   :disabled="!canShareWebm || isSharingWebm"
                   @click="handleShareWebm"
                 >
-                  {{ isSharingWebm ? 'Recording...' : 'Export WebM' }}
+                  {{ isSharingWebm ? ui.app.recording : ui.app.exportWebm }}
                 </button>
                 <p v-if="shareWebmStatus" class="share-export-status">
                   {{ shareWebmStatus }}
                 </p>
               </div>
               <div class="share-config-card">
-                <div class="share-config-title">Share Setup</div>
+                <div class="share-config-title">{{ ui.app.shareSetup }}</div>
                 <p class="share-config-copy">
                   Create a 24-hour preview link by uploading the selected Spine assets to Spine Viewer storage after confirmation.
                 </p>
                 <label class="share-option-row">
                   <span class="share-option-copy">
-                    <span class="share-option-title">Watermark textures</span>
-                    <span class="share-option-hint">Export texture pages as WebP and apply a static watermark.</span>
+                    <span class="share-option-title">{{ ui.app.watermarkTextures }}</span>
+                    <span class="share-option-hint">{{ ui.app.watermarkHint }}</span>
                   </span>
                   <span class="share-option-switch">
                     <input v-model="shareWatermarkEnabled" class="share-option-checkbox" type="checkbox">
@@ -293,7 +293,7 @@
                 </label>
                 <label class="share-option-row" :class="{ disabled: !sharePrimaryAnimationName }">
                   <span class="share-option-copy">
-                    <span class="share-option-title">Clip to current animation</span>
+                    <span class="share-option-title">{{ ui.app.clipCurrentAnimation }}</span>
                     <span class="share-option-hint">
                       {{ sharePrimaryAnimationName ? `Only keep "${sharePrimaryAnimationName}" in the shared skeleton JSON.` : 'Choose an animation first.' }}
                     </span>
@@ -311,7 +311,7 @@
                   </span>
                 </label>
                 <div class="share-defaults-summary">
-                  <span class="share-defaults-label">Defaults</span>
+                  <span class="share-defaults-label">{{ ui.app.defaults }}</span>
                   <span class="share-defaults-value">{{ shareDefaultsSummary }}</span>
                 </div>
               </div>
@@ -321,7 +321,7 @@
                 :disabled="!canShare || isSharing"
                 @click="openShareConfirm"
               >
-                {{ isSharing ? 'Sharing...' : 'Create Share Link' }}
+                {{ isSharing ? ui.app.sharing : ui.app.createShareLink }}
               </button>
               <p v-if="!canShare" class="sidebar-status">
                 Load a Spine asset and keep at least one animation available before sharing.
@@ -341,7 +341,7 @@
 
               <div v-if="shareHistory.length > 0" class="inspect-subsection inspect-subsection--share-history">
                 <div class="inspect-subsection-header">
-                  <span class="inspect-subsection-title">Share History</span>
+                  <span class="inspect-subsection-title">{{ ui.app.shareHistory }}</span>
                 </div>
                 <div class="share-history-list">
                   <div
@@ -365,8 +365,8 @@
                       </span>
                     </div>
                     <div class="share-history-actions">
-                      <button type="button" class="mini-action-btn" :disabled="!isShareHistoryActionAllowed(item)" @click="openShareLink(item.shareUrl)">Open</button>
-                      <button type="button" class="mini-action-btn" :disabled="!isShareHistoryActionAllowed(item)" @click="copyShareLink(item.shareUrl)">Copy</button>
+                      <button type="button" class="mini-action-btn" :disabled="!isShareHistoryActionAllowed(item)" @click="openShareLink(item.shareUrl)">{{ ui.app.open }}</button>
+                      <button type="button" class="mini-action-btn" :disabled="!isShareHistoryActionAllowed(item)" @click="copyShareLink(item.shareUrl)">{{ ui.app.copy }}</button>
                       <button
                         type="button"
                         class="mini-action-btn danger"
@@ -637,6 +637,7 @@ import { createShareLink, extractShareTokenFromPath, fetchShareManifest, fetchSh
 import { prepareShareUpload } from './lib/share/prepareShareUpload'
 import type { ShareManifest } from './lib/share/types'
 import { downloadWebm, recordCanvasToWebm } from './lib/share/webm'
+import { ui } from './lib/ui/strings'
 
 const appVersion = packageJson.version
 
@@ -754,10 +755,10 @@ const formatFileSize = (bytes: number) => {
   return `${Math.round((bytes / (1024 * 1024)) * 10) / 10} MB`
 }
 const getShareFileTypeLabel = (file: File) => {
-  if (/\.json$/i.test(file.name)) return 'Skeleton JSON'
-  if (/\.atlas$/i.test(file.name)) return 'Atlas'
-  if (/\.png$/i.test(file.name)) return 'Texture'
-  return 'File'
+  if (/\.json$/i.test(file.name)) return ui.app.skeletonJson
+  if (/\.atlas$/i.test(file.name)) return ui.app.atlas
+  if (/\.png$/i.test(file.name)) return ui.app.texture
+  return ui.app.file
 }
 const shareUploadFileSummary = computed(() => sourceFiles.value.map(file => ({
   name: file.name,
@@ -816,16 +817,16 @@ const scheduleShareHistoryPrune = () => {
 
 const getShareHistoryStatusLabel = (item: ShareHistoryEntry) => {
   const status = getShareHistoryStatus(item)
-  if (status === 'revoked') return 'Revoked'
-  if (status === 'expired') return 'Expired'
-  return 'Active'
+  if (status === 'revoked') return ui.app.revoked
+  if (status === 'expired') return ui.app.expired
+  return ui.app.active
 }
 
 const getShareHistoryRevokeLabel = (item: ShareHistoryEntry) => {
   const status = getShareHistoryStatus(item)
-  if (status === 'revoked') return 'Revoked'
-  if (status === 'expired') return 'Expired'
-  return 'Revoke'
+  if (status === 'revoked') return ui.app.revoked
+  if (status === 'expired') return ui.app.expired
+  return ui.app.revoke
 }
 
 const isShareHistoryActionAllowed = (item: ShareHistoryEntry) => {
@@ -915,7 +916,7 @@ const copyShareLink = async (url: string) => {
   try {
     await navigator.clipboard.writeText(url)
   } catch {
-    window.prompt('Copy share link', url)
+    window.prompt(ui.app.copyShareLink, url)
   }
 }
 

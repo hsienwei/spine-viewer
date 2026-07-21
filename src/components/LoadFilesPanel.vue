@@ -2,14 +2,14 @@
   <div class="load-files-panel">
     <div class="load-buttons">
       <div class="load-local-group">
-        <button class="btn btn-outline" type="button" aria-label="Select Spine files" @click="triggerFileInput">
+        <button class="btn btn-outline" type="button" :aria-label="ui.load.selectFiles" @click="triggerFileInput">
           <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
             <path d="M6.5 1v8M3 6l3.5 3.5L10 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M1 10v1.5a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5V10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
           </svg>
           Files
         </button>
-        <button class="btn btn-outline btn-folder" type="button" aria-label="Select a Spine asset folder" @click="triggerFolderInput">
+        <button class="btn btn-outline btn-folder" type="button" :aria-label="ui.load.selectFolder" @click="triggerFolderInput">
           <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
             <path d="M1.5 4.25h3.1l1.05 1.15H11.5v4.85a.75.75 0 0 1-.75.75h-8.5a.75.75 0 0 1-.75-.75z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
             <path d="M1.5 5.4v-2.15a.75.75 0 0 1 .75-.75h2.05l1.05 1.15h5.4a.75.75 0 0 1 .75.75V5.4" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
@@ -17,7 +17,7 @@
           Folder
         </button>
       </div>
-      <button class="btn btn-outline btn-drive" type="button" :disabled="isDrivePicking" aria-label="Select Spine files from Google Drive" @click="openDriveFiles">
+      <button class="btn btn-outline btn-drive" type="button" :disabled="isDrivePicking" :aria-label="ui.load.selectDriveFiles" @click="openDriveFiles">
         <svg width="14" height="12" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
           <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
           <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
@@ -26,7 +26,7 @@
           <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
           <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
         </svg>
-        {{ isDrivePicking ? 'Picking...' : 'Drive' }}
+        {{ isDrivePicking ? ui.load.picking : ui.load.drive }}
       </button>
     </div>
 
@@ -58,11 +58,11 @@
     <section v-if="selectedFiles.length > 0" class="file-summary-card">
       <div class="file-summary-header">
         <div class="file-summary-copy">
-          <span class="file-summary-title">Loaded Files</span>
+          <span class="file-summary-title">{{ ui.load.loadedFiles }}</span>
           <span class="file-summary-total">{{ selectedFiles.length }} files detected</span>
         </div>
         <button type="button" class="summary-toggle-btn" @click="isFileListExpanded = !isFileListExpanded">
-          {{ isFileListExpanded ? 'Hide list' : 'Show list' }}
+          {{ isFileListExpanded ? ui.load.hideList : ui.load.showList }}
         </button>
       </div>
       <div class="file-summary-stats">
@@ -90,15 +90,15 @@
     </section>
 
     <div v-if="isAnalyzingFiles" class="status-hint">
-      Analyzing file groups...
+      {{ ui.load.analyzingGroups }}
     </div>
 
     <div v-else class="status-hint">
-      Use Folder to load a whole Spine asset directory without Ctrl multi-select.
+      {{ ui.load.folderHint }}
     </div>
 
     <section v-if="assetGroups.length > 0" class="subsection">
-      <h4 class="subsection-title">Detected Sets</h4>
+      <h4 class="subsection-title">{{ ui.load.detectedSets }}</h4>
       <div class="group-list">
         <label
           v-for="group in assetGroups"
@@ -117,12 +117,12 @@
             <div class="group-header">
               <span class="group-title">{{ group.label }}</span>
               <span class="group-status" :class="{ ready: group.isLoadable, invalid: !group.isLoadable }">
-                {{ group.isLoadable ? 'Ready' : 'Needs Fix' }}
+                {{ group.isLoadable ? ui.load.ready : ui.load.needsFix }}
               </span>
             </div>
             <div class="group-meta">
               <span>{{ group.skeletonFile.name }}</span>
-              <span>{{ group.atlasFile?.name || 'No atlas' }}</span>
+              <span>{{ group.atlasFile?.name || ui.load.noAtlas }}</span>
               <span>{{ group.textureFiles.length }} textures</span>
             </div>
             <div v-if="group.issues.length > 0" class="group-issues">
@@ -163,6 +163,7 @@
 import { computed, ref } from 'vue'
 import { analyzeSpineFiles, type SpineFileGroupCandidate } from '../lib/spine/versionDetection'
 import { useGoogleDrivePicker } from '../composables/useGoogleDrivePicker'
+import { ui } from '../lib/ui/strings'
 
 interface FilePickerWindow extends Window {
   showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle>
@@ -247,7 +248,7 @@ const openDriveFiles = async () => {
       await processFiles(files)
     }
   } catch (error) {
-    analysisIssues.value = [error instanceof Error ? error.message : 'Failed to load files from Google Drive']
+    analysisIssues.value = [error instanceof Error ? error.message : ui.load.failedDrive]
   } finally {
     isDrivePicking.value = false
   }
@@ -269,7 +270,7 @@ const readDirectoryFiles = async (directoryHandle: FileSystemDirectoryHandle): P
   }).values
 
   if (!values) {
-    throw new Error('Directory iteration is not supported in this browser')
+    throw new Error(ui.load.directoryUnsupported)
   }
 
   for await (const entry of values.call(directoryHandle)) {
@@ -303,12 +304,12 @@ const triggerFolderInput = async () => {
         isFileListExpanded.value = false
         assetGroups.value = []
         selectedGroupId.value = ''
-        analysisIssues.value = ['No supported Spine files found in the selected folder']
+        analysisIssues.value = [ui.load.noSupportedFolderFiles]
       }
     } catch (error) {
       const isAbortError = error instanceof DOMException && error.name === 'AbortError'
       if (!isAbortError) {
-        analysisIssues.value = ['Failed to read the selected folder']
+        analysisIssues.value = [ui.load.failedFolderRead]
       }
     }
     return
@@ -360,7 +361,7 @@ const processFiles = async (files: File[]) => {
     isFileListExpanded.value = false
     assetGroups.value = []
     selectedGroupId.value = ''
-    analysisIssues.value = ['No supported Spine files were selected']
+    analysisIssues.value = [ui.load.noSupportedFiles]
     isAnalyzingFiles.value = false
     return
   }
@@ -389,7 +390,7 @@ const processFiles = async (files: File[]) => {
     selectedGroupId.value = analysis.groups.find(group => group.isLoadable)?.id || analysis.groups[0]?.id || ''
   } catch (error) {
     if (requestId !== fileAnalysisRequestId) return
-    analysisIssues.value = [error instanceof Error ? error.message : 'Failed to analyze selected files']
+    analysisIssues.value = [error instanceof Error ? error.message : ui.load.failedAnalysis]
   } finally {
     if (requestId === fileAnalysisRequestId) {
       isAnalyzingFiles.value = false

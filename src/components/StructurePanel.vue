@@ -3,16 +3,16 @@
     <section v-if="structure && structure.bones.length > 0" class="section hierarchy-section">
       <div class="hierarchy-heading">
         <h3 class="section-title">
-          Skeleton Tree
+          {{ ui.tree.title }}
           <span class="hierarchy-counts">
             {{ structure.totalBones }} bones / {{ structure.slots.length }} slots
           </span>
         </h3>
-        <div class="tree-actions" aria-label="Skeleton tree actions">
-          <button type="button" class="tree-action-btn" aria-label="Expand all skeleton nodes" title="Expand all" @click="setAllExpanded(true)">
+        <div class="tree-actions" :aria-label="ui.tree.actions">
+          <button type="button" class="tree-action-btn" :aria-label="ui.tree.expandAllAria" :title="ui.tree.expandAll" @click="setAllExpanded(true)">
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 5.5 8 9.5l4-4M4 2.5 8 6.5l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button type="button" class="tree-action-btn" aria-label="Collapse all skeleton nodes" title="Collapse all" @click="setAllExpanded(false)">
+          <button type="button" class="tree-action-btn" :aria-label="ui.tree.collapseAllAria" :title="ui.tree.collapseAll" @click="setAllExpanded(false)">
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 10.5 4-4 4 4M4 13.5l4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
@@ -29,8 +29,8 @@
     </section>
 
     <section v-if="!structure || structure.bones.length === 0" class="section empty-state">
-      <h3 class="section-title">Skeleton Tree</h3>
-      <p>Load a skeleton to inspect its hierarchy.</p>
+      <h3 class="section-title">{{ ui.tree.title }}</h3>
+      <p>{{ ui.tree.empty }}</p>
     </section>
   </div>
 </template>
@@ -39,6 +39,7 @@
 import { ref } from 'vue'
 import SkeletonTree from './SkeletonTree.vue'
 import type { SpineSelectionState, SpineSkeletonStructure } from '../lib/spine/skeletonStructure'
+import { ui } from '../lib/ui/strings'
 
 const props = defineProps<{
   structure?: SpineSkeletonStructure

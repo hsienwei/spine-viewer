@@ -6,7 +6,7 @@
           v-if="hasChildren(bone)"
           type="button"
           class="tree-toggle"
-          :aria-label="`${isOpen(bone) ? 'Collapse' : 'Expand'} ${bone.name}`"
+          :aria-label="`${isOpen(bone) ? ui.tree.collapse : ui.tree.expand} ${bone.name}`"
           :aria-expanded="isOpen(bone)"
           @click="toggle(bone)"
         >
@@ -27,7 +27,7 @@
       <div v-show="isOpen(bone)" class="tree-children">
         <div v-for="slot in bone.slots" :key="slot.name" class="slot-row" :style="{ paddingLeft: `${(depth + 1) * 14 + 24}px` }">
           <button type="button" class="slot-item" :class="{ 'is-selected': selectedSlotName === slot.name }" :title="slot.attachmentName ? `${slot.name} - ${slot.attachmentName}` : slot.name" @click="emit('slot-selected', slot.name, slot.boneName)">
-            <span class="slot-name">{{ slot.name }}</span><span class="slot-attachment">{{ slot.attachmentName || 'no attachment' }}</span>
+            <span class="slot-name">{{ slot.name }}</span><span class="slot-attachment">{{ slot.attachmentName || ui.tree.noAttachment }}</span>
           </button>
         </div>
         <SkeletonTree v-if="bone.children.length" :bones="bone.children" :depth="depth + 1" :expansion-command="expansionCommand" :selected-bone-name="selectedBoneName" :selected-slot-name="selectedSlotName" @bone-selected="emit('bone-selected', $event)" @slot-selected="(slotName, boneName) => emit('slot-selected', slotName, boneName)" />
@@ -39,6 +39,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import type { SpineBoneNode } from '../lib/spine/skeletonStructure'
+import { ui } from '../lib/ui/strings'
 
 defineOptions({ name: 'SkeletonTree' })
 const props = withDefaults(defineProps<{ bones: SpineBoneNode[]; depth?: number; expansionCommand?: { id: number; expanded: boolean }; selectedBoneName?: string | null; selectedSlotName?: string | null }>(), { depth: 0, expansionCommand: undefined, selectedBoneName: null, selectedSlotName: null })

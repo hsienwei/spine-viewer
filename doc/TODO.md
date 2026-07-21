@@ -73,11 +73,11 @@
 - [x] 播放列顯示目前 animation name。
 - [x] Runtime fallback / version 狀態改成清楚提示。
 - [x] 空狀態加強說明：用 `Files / Folder / Drive` 載入 Spine asset。
-- [ ] 統一 UI 語言策略：全繁中或全英文。
+- [x] 統一 UI 語言策略：全繁中或全英文。
 - [x] 降低過小字級，改善長時間操作可讀性。
 - [x] 檢查 light theme 對比。
 - [ ] 建立 accessibility audit。
-- [ ] UI 字串集中管理，為 i18n 與錯誤文案修正鋪路。
+- [x] UI 字串集中管理，為 i18n 與錯誤文案修正鋪路。
 
 ### 下一階段 - 載入失敗指引
 

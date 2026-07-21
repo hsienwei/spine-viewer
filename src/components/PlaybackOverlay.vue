@@ -1,11 +1,11 @@
 <template>
   <section v-if="visible" class="playback-overlay" :class="{ 'playback-overlay--collapsed': isCollapsed }">
     <div class="playback-dock-header">
-      <span class="playback-dock-title" :title="animationName || 'Playback'">{{ animationName || 'Playback' }}</span>
+      <span class="playback-dock-title" :title="animationName || ui.playback.fallbackTitle">{{ animationName || ui.playback.fallbackTitle }}</span>
       <button
         type="button"
         class="playback-dock-toggle"
-        :aria-label="isCollapsed ? 'Expand playback controls' : 'Collapse playback controls'"
+        :aria-label="isCollapsed ? ui.playback.expand : ui.playback.collapse"
         @click="isCollapsed = !isCollapsed"
       >
         <svg v-if="isCollapsed" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -18,7 +18,7 @@
     </div>
     <div v-show="!isCollapsed" class="playback-dock-content">
       <div v-if="trackOptions.length > 1" class="track-selector-row">
-      <span class="track-selector-label">Track</span>
+      <span class="track-selector-label">{{ ui.playback.track }}</span>
       <div class="track-selector-wrapper">
         <select
           class="track-selector-input"
@@ -83,7 +83,7 @@
     </div>
 
     <div class="controls-row">
-      <button type="button" class="ctrl-btn" @click="stop" title="Stop" aria-label="Stop playback and return to start">
+      <button type="button" class="ctrl-btn" @click="stop" :title="ui.playback.stop" :aria-label="ui.playback.stopAria">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
           <rect x="1.5" y="1.5" width="9" height="9" rx="1.5"/>
         </svg>
@@ -92,8 +92,8 @@
         type="button"
         class="ctrl-btn ctrl-btn--primary"
         @click="togglePlay"
-        :title="isPlaying ? 'Pause' : 'Play'"
-        :aria-label="isPlaying ? 'Pause playback' : 'Play animation'"
+        :title="isPlaying ? ui.playback.pause : ui.playback.play"
+        :aria-label="isPlaying ? ui.playback.pauseAria : ui.playback.playAria"
       >
         <svg v-if="isPlaying" width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
           <rect x="2" y="2" width="3.5" height="10" rx="1"/>
@@ -113,7 +113,7 @@
           step="0.1"
           :value="playbackRate || 1"
           class="range-track range-track--speed"
-          aria-label="Playback speed"
+          :aria-label="ui.playback.speedAria"
           :aria-valuetext="`${(playbackRate || 1).toFixed(1)}x speed`"
           @input="setSpeed($event)"
         />
@@ -125,6 +125,7 @@
 
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
+import { ui } from '../lib/ui/strings'
 import type { SpineAnimationEventMarker } from '../lib/spine/adapters'
 
 interface TimelineMarkerViewModel extends SpineAnimationEventMarker {
@@ -353,7 +354,7 @@ const formatTime = (seconds: number): string => {
 
 const normalizeMarkerEventName = (eventName: string | null | undefined) => {
   const trimmed = eventName?.trim()
-  return trimmed && trimmed.length > 0 ? trimmed : 'Unnamed event'
+  return trimmed && trimmed.length > 0 ? trimmed : ui.playback.unnamedEvent
 }
 
 const formatMarkerTooltip = (marker: TimelineMarkerViewModel) => {

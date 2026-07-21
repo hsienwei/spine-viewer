@@ -17,7 +17,7 @@
       @touchcancel.prevent="handleTouchEnd"
     ></canvas>
     <div v-if="loading" class="loading-overlay">
-      <span>Loading...</span>
+      <span>{{ ui.canvas.loading }}</span>
     </div>
     <div v-if="errorMsg" class="error-overlay">
       <span>{{ errorMsg }}</span>
@@ -42,6 +42,7 @@ import { detectSpineVersion } from '../lib/spine/versionDetection'
 import type { SpineSelectionState, SpineSkeletonStructure } from '../lib/spine/skeletonStructure'
 import type { SpineAnimationEventPayload, SpineAnimationSummary, SpineDebugOptions, SpineRuntimeSession, SpineTextureFiltering, SpineTrackEntry, SpineTrackPlaybackState } from '../lib/spine/adapters'
 import type { SpineDetectedVersion, SpineMajorVersion, SpineVersionDetectionResult } from '../lib/spine/versionDetection'
+import { ui } from '../lib/ui/strings'
 
 const props = defineProps<{
   files?: File[]
@@ -139,7 +140,7 @@ const formatLoadFailure = (
 }
 
 const formatInitialLoadError = (error: unknown) => {
-  const message = error instanceof Error ? error.message : 'Failed to load'
+  const message = error instanceof Error ? error.message : ui.canvas.failedToLoad
   const normalizedMessage = message.toLowerCase()
 
   if (normalizedMessage.includes('missing skeleton file') || normalizedMessage.includes('missing atlas file')) {
