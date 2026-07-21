@@ -100,22 +100,20 @@
       </div>
 
       <div class="sidebar-content">
-        <div v-if="!isSharePreview" class="sidebar-panel sidebar-panel--load">
+        <div v-if="!isSharePreview" class="sidebar-panel sidebar-panel--load" :class="{ 'sidebar-panel--empty-state-focus': showEmptyState }">
           <button
             type="button"
             class="sidebar-panel-header"
             :aria-expanded="isLoadFilesPanelOpen"
             @click="toggleSidebarPanel('load')"
           >
-            <span>Load</span>
+            <span class="sidebar-panel-header-title">Load <span v-if="showEmptyState" class="sidebar-panel-start-hint">Start here</span></span>
             <svg class="panel-chevron" :class="{ open: isLoadFilesPanelOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
           <div v-show="isLoadFilesPanelOpen" class="sidebar-panel-body">
-            <LoadFilesPanel
-              @file-selected="handleFileSelected"
-            />
+            <LoadFilesPanel @file-selected="handleFileSelected" />
           </div>
         </div>
 
@@ -450,6 +448,14 @@
         @error="(err) => handleError(err)" 
         @canvas-tap="handleCanvasTap"
       />
+      <section v-if="showEmptyState" class="empty-load-state" aria-label="Load a Spine asset">
+        <p class="empty-load-state__eyebrow">SPINE ASSET</p>
+        <h1 class="empty-load-state__title">Load a Spine asset</h1>
+        <p class="empty-load-state__copy">Use the Load panel</p>
+        <svg class="empty-load-state__arrow" :class="{ 'empty-load-state__arrow--mobile': isMobileViewport }" width="40" height="24" viewBox="0 0 40 24" fill="none" aria-hidden="true">
+          <path d="M38 12H4m0 0 8-8M4 12l8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </section>
       <PlaybackOverlay
         :visible="animations.length > 0"
         :track-options="overlayTrackOptions"
@@ -723,6 +729,7 @@ const hasInspectPanel = computed(() => {
     || runtimeVersion.value !== null
 })
 const canShare = computed(() => sourceFiles.value.length > 0 && animations.value.length > 0)  
+const showEmptyState = computed(() => !isSharePreview.value && sourceFiles.value.length === 0)
 const canUseMobileAnimate = computed(() => animations.value.length > 0)
 const canUseMobileInspect = computed(() => hasInspectPanel.value)
 const canShareWebm = computed(() => {
@@ -1111,6 +1118,12 @@ watch([canUseMobileAnimate, canUseMobileInspect], ([canAnimate, canInspect]) => 
     activeMobilePanel.value = 'load'
   }
 })
+
+watch(() => sourceFiles.value.length, (fileCount) => {
+  if (!isMobileViewport.value || fileCount > 0) return
+  activeMobilePanel.value = 'load'
+  mobileSheetState.value = 'half'
+}, { immediate: true })
 
 const applyTheme = (dark: boolean) => {
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
@@ -2434,6 +2447,76 @@ select {
   background: #000;
 }
 
+.empty-load-state {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 12;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  width: min(100% - 40px, 360px);
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.empty-load-state__eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+}
+
+.empty-load-state__title {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.empty-load-state__copy {
+  margin: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 13px;
+}
+
+.empty-load-state__arrow {
+  color: var(--accent);
+  animation: empty-load-arrow 1.6s ease-in-out infinite;
+}
+
+@keyframes empty-load-arrow {
+  50% { transform: translateX(-7px); }
+}
+
+.sidebar-panel--empty-state-focus {
+  position: relative;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.sidebar-panel-header-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar-panel-start-hint {
+  padding: 3px 6px;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .mobile-bottom-nav,
 .mobile-floating-share {
   display: none;
@@ -2808,6 +2891,25 @@ select {
     flex: 1;
     min-height: 0;
     padding-bottom: calc(var(--mobile-bottom-nav-height) + var(--mobile-bottom-nav-gap) + var(--mobile-bottom-nav-bottom));
+  }
+
+  .empty-load-state {
+    top: 22%;
+    width: min(100% - 32px, 300px);
+    gap: 10px;
+  }
+
+  .empty-load-state__title {
+    font-size: 18px;
+  }
+
+  .empty-load-state__arrow--mobile {
+    transform: rotate(-90deg);
+    animation-name: empty-load-arrow-mobile;
+  }
+
+  @keyframes empty-load-arrow-mobile {
+    50% { transform: translateY(7px) rotate(-90deg); }
   }
 
   .mobile-bottom-nav {

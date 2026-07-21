@@ -10,9 +10,9 @@
 
 ## Version Strategy
 
-- Implement actual `auto` fallback flow: try detected/selected runtime first, then fallback candidate when initialization fails.
-- Surface version status in UI: `Detected Version`, `Runtime Version`, and `Fallback Used`.
-- Add better 3.x / 4.x load error messages so users can tell whether the failure came from detection, missing runtime, or runtime initialization.
+- [x] Implement actual `auto` fallback flow: try detected runtime first, then fallback candidate when initialization fails.
+- [x] Surface version status in UI: `Detected Version`, `Runtime Version`, and `Fallback Used`.
+- [x] Add actionable all-failed guidance that separates version detection, missing runtime, and runtime initialization failures.
 
 ## Viewport
 
@@ -71,13 +71,19 @@
 - [x] 長 animation / bone / slot / attachment 名稱可完整查看。
 - [x] 選中的 bone / slot 在 Canvas 上有更明顯回饋。
 - [x] 播放列顯示目前 animation name。
-- [ ] Runtime fallback / version 狀態改成清楚提示。
-- [ ] 空狀態加強說明：用 `Files / Folder / Drive` 載入 Spine asset。
+- [x] Runtime fallback / version 狀態改成清楚提示。
+- [x] 空狀態加強說明：用 `Files / Folder / Drive` 載入 Spine asset。
 - [ ] 統一 UI 語言策略：全繁中或全英文。
 - [ ] 降低過小字級，改善長時間操作可讀性。
 - [ ] 檢查 light theme 對比。
 - [ ] 建立 accessibility audit。
 - [ ] UI 字串集中管理，為 i18n 與錯誤文案修正鋪路。
+
+### 下一階段 - 載入失敗指引
+
+- [x] 將多個 runtime 的原始錯誤整理成單一可讀摘要與建議操作。
+- [x] 對偵測失敗、3.x runtime 無法取得、4.x runtime 初始化失敗提供不同處理建議。
+- [ ] 驗收 3.x 與 4.x 資產的 fallback 成功與全部失敗流程。
 
 ### P2 - 中優先
 

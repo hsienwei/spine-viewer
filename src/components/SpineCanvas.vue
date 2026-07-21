@@ -41,7 +41,7 @@ import { DEFAULT_SPINE_DEBUG_OPTIONS, DEFAULT_SPINE_TEXTURE_FILTERING, Spine3Run
 import { detectSpineVersion } from '../lib/spine/versionDetection'
 import type { SpineSelectionState, SpineSkeletonStructure } from '../lib/spine/skeletonStructure'
 import type { SpineAnimationEventPayload, SpineAnimationSummary, SpineDebugOptions, SpineRuntimeSession, SpineTextureFiltering, SpineTrackEntry, SpineTrackPlaybackState } from '../lib/spine/adapters'
-import type { SpineDetectedVersion, SpineMajorVersion } from '../lib/spine/versionDetection'
+import type { SpineDetectedVersion, SpineMajorVersion, SpineVersionDetectionResult } from '../lib/spine/versionDetection'
 
 const props = defineProps<{
   files?: File[]
@@ -113,6 +113,40 @@ const runtimeAdapters = {
 interface LoadAttemptFailure {
   version: SpineMajorVersion
   message: string
+}
+
+const formatLoadFailure = (
+  detection: SpineVersionDetectionResult,
+  failures: LoadAttemptFailure[]
+) => {
+  const messages = failures.map(({ message }) => message.toLowerCase())
+  const attemptedVersions = failures.map(({ version }) => `Spine ${version}.x`).join(' then ')
+  const failureSummary = failures.map(({ version, message }) => `Spine ${version}.x: ${message}`).join('\n')
+
+  if (messages.some(message => message.includes('missing skeleton file') || message.includes('missing atlas file'))) {
+    return `The Spine asset set is incomplete.\n\nNext: load the matching .json, .atlas, and every texture listed by the atlas.\n\n${failureSummary}`
+  }
+
+  if (messages.some(message => message.includes('runtime bundle is not ready') || message.includes('failed to fetch dynamically imported module'))) {
+    return `This viewer could not start the required Spine runtime.\n\nDetected: ${detection.detectedVersion === 'unknown' ? 'unknown' : `Spine ${detection.detectedVersion}.x`}\nTried: ${attemptedVersions}\n\nNext: try another exported asset set or contact the viewer maintainer with the details below.\n\n${failureSummary}`
+  }
+
+  if (messages.some(message => message.includes('preloaded image') || message.includes('texture'))) {
+    return `A texture required by this Spine asset could not be loaded.\n\nNext: confirm that every atlas page is included and uses the original filename.\n\n${failureSummary}`
+  }
+
+  return `This Spine asset could not be opened with the available runtimes.\n\nDetected: ${detection.detectedVersion === 'unknown' ? 'unknown' : `Spine ${detection.detectedVersion}.x`}\nTried: ${attemptedVersions}\n\nNext: export the asset for Spine 3.x or 4.x, then load its matching .json, .atlas, and textures.\n\n${failureSummary}`
+}
+
+const formatInitialLoadError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : 'Failed to load'
+  const normalizedMessage = message.toLowerCase()
+
+  if (normalizedMessage.includes('missing skeleton file') || normalizedMessage.includes('missing atlas file')) {
+    return `The Spine asset set is incomplete.\n\nNext: load the matching .json, .atlas, and every texture listed by the atlas.\n\n${message}`
+  }
+
+  return `The selected files could not be prepared for loading.\n\nNext: choose a matching Spine .json, .atlas, and texture set.\n\n${message}`
 }
 
 const parseDebugRuntime = (value: string | null): SpineMajorVersion | null => {
@@ -375,12 +409,12 @@ const loadSpine = async () => {
     }
 
     const finalMessage = failures.length > 0
-      ? failures.map(({ version, message }) => `Spine ${version}.x: ${message}`).join('\n')
-      : 'Failed to load'
+      ? formatLoadFailure(detection, failures)
+      : 'The Spine asset could not be opened.\n\nNext: choose a matching .json, .atlas, and texture set.'
     setLoadError(finalMessage)
   } catch (e) {
     if (requestId === loadRequestId) {
-      setLoadError(e instanceof Error ? e.message : 'Failed to load')
+      setLoadError(formatInitialLoadError(e))
     }
   }
 }
@@ -742,6 +776,8 @@ defineExpose({
   color: var(--danger);
   max-width: 320px;
   text-align: center;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 .viewport-overlay {
