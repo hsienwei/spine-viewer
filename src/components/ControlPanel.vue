@@ -411,7 +411,7 @@ const emitDebugOptionChange = (key: keyof SpineDebugOptions, event: Event) => {
 
 .section-title {
   font-family: var(--font-ui);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -425,7 +425,7 @@ const emitDebugOptionChange = (key: keyof SpineDebugOptions, event: Event) => {
   background: var(--bg-surface);
   color: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.06em;
   cursor: pointer;
   transition: border-color var(--transition), color var(--transition), background var(--transition);
@@ -495,7 +495,7 @@ const emitDebugOptionChange = (key: keyof SpineDebugOptions, event: Event) => {
 
 .track-chip {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   color: var(--accent);
 }
@@ -724,7 +724,7 @@ const emitDebugOptionChange = (key: keyof SpineDebugOptions, event: Event) => {
   padding: 3px 8px;
   border-radius: 999px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.06em;
   border: 1px solid var(--border);
   background: var(--bg-surface);

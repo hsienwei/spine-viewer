@@ -30,18 +30,18 @@
             <span class="slot-name">{{ slot.name }}</span><span class="slot-attachment">{{ slot.attachmentName || 'no attachment' }}</span>
           </button>
         </div>
-        <SkeletonTree v-if="bone.children.length" :bones="bone.children" :depth="depth + 1" :selected-bone-name="selectedBoneName" :selected-slot-name="selectedSlotName" @bone-selected="emit('bone-selected', $event)" @slot-selected="(slotName, boneName) => emit('slot-selected', slotName, boneName)" />
+        <SkeletonTree v-if="bone.children.length" :bones="bone.children" :depth="depth + 1" :expansion-command="expansionCommand" :selected-bone-name="selectedBoneName" :selected-slot-name="selectedSlotName" @bone-selected="emit('bone-selected', $event)" @slot-selected="(slotName, boneName) => emit('slot-selected', slotName, boneName)" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import type { SpineBoneNode } from '../lib/spine/skeletonStructure'
 
 defineOptions({ name: 'SkeletonTree' })
-const props = withDefaults(defineProps<{ bones: SpineBoneNode[]; depth?: number; selectedBoneName?: string | null; selectedSlotName?: string | null }>(), { depth: 0, selectedBoneName: null, selectedSlotName: null })
+const props = withDefaults(defineProps<{ bones: SpineBoneNode[]; depth?: number; expansionCommand?: { id: number; expanded: boolean }; selectedBoneName?: string | null; selectedSlotName?: string | null }>(), { depth: 0, expansionCommand: undefined, selectedBoneName: null, selectedSlotName: null })
 const emit = defineEmits<{ 'bone-selected': [boneName: string]; 'slot-selected': [slotName: string, boneName: string] }>()
 const expandedNames = ref(new Set(props.depth < 1 ? props.bones.map(bone => bone.name) : []))
 const hasChildren = (bone: SpineBoneNode) => bone.children.length > 0 || bone.slots.length > 0
@@ -51,6 +51,13 @@ const toggle = (bone: SpineBoneNode) => {
   next.has(bone.name) ? next.delete(bone.name) : next.add(bone.name)
   expandedNames.value = next
 }
+
+watch(() => props.expansionCommand?.id, () => {
+  if (!props.expansionCommand) return
+  expandedNames.value = props.expansionCommand.expanded
+    ? new Set(props.bones.filter(hasChildren).map(bone => bone.name))
+    : new Set()
+})
 </script>
 
 <style scoped>
@@ -62,6 +69,6 @@ const toggle = (bone: SpineBoneNode) => {
 .tree-toggle svg { transition: transform var(--transition); }.tree-toggle svg.open { transform: rotate(90deg); }.tree-toggle--empty { pointer-events: none; }
 .tree-select, .slot-item { min-width: 0; width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 0; border-radius: var(--radius-sm); background: transparent; text-align: left; cursor: pointer; }
 .tree-select { min-height: 28px; padding: 5px 8px; }.tree-select:hover, .tree-select:focus-visible { outline: none; background: var(--bg-raised); }.tree-select.is-selected { background: var(--accent-dim); box-shadow: inset 2px 0 var(--accent); }
-.bone-name, .slot-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.bone-name { font-family: var(--font-ui); font-size: 12px; font-weight: 600; color: var(--text-primary); }.bone-meta, .slot-attachment { flex-shrink: 0; font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
-.tree-children { border-top: 1px solid var(--border-muted); }.slot-row { padding-right: 6px; }.slot-item { min-height: 30px; padding: 5px 8px; font-size: 11px; }.slot-item:hover, .slot-item:focus-visible { outline: none; background: var(--bg-raised); }.slot-item.is-selected { background: rgba(95, 173, 130, 0.12); box-shadow: inset 2px 0 var(--success); }.slot-name { color: var(--text-secondary); }.slot-attachment { text-align: right; }
+.bone-name, .slot-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.bone-name { font-family: var(--font-ui); font-size: 12px; font-weight: 600; color: var(--text-primary); }.bone-meta, .slot-attachment { flex-shrink: 0; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+.tree-children { border-top: 1px solid var(--border-muted); }.slot-row { padding-right: 6px; }.slot-item { min-height: 32px; padding: 5px 8px; font-size: 12px; }.slot-item:hover, .slot-item:focus-visible { outline: none; background: var(--bg-raised); }.slot-item.is-selected { background: rgba(95, 173, 130, 0.12); box-shadow: inset 2px 0 var(--success); }.slot-name { color: var(--text-secondary); }.slot-attachment { text-align: right; }
 </style>

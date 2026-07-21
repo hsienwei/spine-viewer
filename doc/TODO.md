@@ -74,8 +74,8 @@
 - [x] Runtime fallback / version 狀態改成清楚提示。
 - [x] 空狀態加強說明：用 `Files / Folder / Drive` 載入 Spine asset。
 - [ ] 統一 UI 語言策略：全繁中或全英文。
-- [ ] 降低過小字級，改善長時間操作可讀性。
-- [ ] 檢查 light theme 對比。
+- [x] 降低過小字級，改善長時間操作可讀性。
+- [x] 檢查 light theme 對比。
 - [ ] 建立 accessibility audit。
 - [ ] UI 字串集中管理，為 i18n 與錯誤文案修正鋪路。
 
@@ -93,7 +93,7 @@
 - [ ] Speed slider 加 `0.1x / 3x` 標示。
 - [ ] 加一鍵回到 `1x`。
 - [ ] `Mix`、`Premultiplied Alpha`、`Filtering` 加 tooltip 說明。
-- [ ] Skeleton tree 加 expand / collapse all。
+- [x] Skeleton tree 加 expand / collapse all。
 - [ ] Share history 移到獨立管理區。
 - [ ] Timeline 支援鍵盤 seek。
 - [x] Slider 補 `aria-valuetext`。

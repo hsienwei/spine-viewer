@@ -1738,14 +1738,14 @@ const handleRevokeShare = async (token: string) => {
   --bg-panel:     #ede7db;
   --bg-surface:   #e4ddd1;
   --bg-raised:    #d8d0c3;
-  --border:       #c5bdb0;
-  --border-muted: #d4ccbf;
+  --border:       #b7ad9f;
+  --border-muted: #c9c0b4;
   --border-glow:  rgba(160, 100, 14, 0.45);
   --bg-overlay:   rgba(232, 225, 212, 0.95);
 
   --text-primary:   #1c1610;
-  --text-secondary: #4a4038;
-  --text-muted:     #7a7060;
+  --text-secondary: #3f3730;
+  --text-muted:     #62594f;
 
   --accent:       #a06c10;
   --accent-dim:   rgba(160, 108, 16, 0.1);

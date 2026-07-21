@@ -540,7 +540,7 @@ const loadFiles = () => {
   background: transparent;
   color: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.06em;
   padding: 4px 8px;
   cursor: pointer;
@@ -680,7 +680,7 @@ const loadFiles = () => {
 
 .subsection-title {
   font-family: var(--font-ui);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -751,7 +751,7 @@ const loadFiles = () => {
 
 .group-status {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.05em;
   flex-shrink: 0;
 }

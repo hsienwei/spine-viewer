@@ -454,7 +454,7 @@ onUnmounted(() => {
 
 .track-selector-label {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   flex-shrink: 0;
 }
@@ -736,7 +736,7 @@ onUnmounted(() => {
 
 .speed-label {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   flex-shrink: 0;
   width: 34px;
