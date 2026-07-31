@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { createGoogleOAuthState, isValidGoogleOAuthState } from '../lib/googleOAuthState'
 
 const CLIENT_ID = '749366685781-jtf30dimpd6i2rto68q2tc9gafabkd94.apps.googleusercontent.com'
+const CLOUD_PROJECT_NUMBER = '749366685781'
 const API_KEY = 'AIzaSyD6uVUdGZwUw_Ttt8k7dmBAX8anL97aps0'
 const SCOPE = 'https://www.googleapis.com/auth/drive.file'
 const INCLUDE_GRANTED_SCOPES = false
@@ -76,6 +77,7 @@ export function useGoogleDrivePicker() {
     const g = (window as any).google
     const builder = new g.picker.PickerBuilder()
       .setDeveloperKey(API_KEY)
+      .setAppId(CLOUD_PROJECT_NUMBER)
       .setOAuthToken(accessToken)
       .setLocale('zh-TW')
 
